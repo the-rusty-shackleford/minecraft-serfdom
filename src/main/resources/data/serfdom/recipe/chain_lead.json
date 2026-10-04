@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "tools",
+  "ingredients": [{"item": "minecraft:lead"}, {"item": "minecraft:chain"}],
+  "result": {"id": "serfdom:chain_lead", "count": 1}
+}

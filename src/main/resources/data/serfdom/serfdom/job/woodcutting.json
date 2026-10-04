@@ -1,0 +1,7 @@
+{
+  "tool": "minecraft:axes",
+  "target": "tree",
+  "radius": {"min": 4, "default": 16, "max": 32},
+  "bonus": ["morevillagers:woodworker"],
+  "bonus_fallback": ["minecraft:fletcher"]
+}

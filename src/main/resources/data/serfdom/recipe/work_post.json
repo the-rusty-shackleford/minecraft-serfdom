@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [{"tag": "minecraft:wooden_fences"}, {"tag": "minecraft:signs"}],
+  "result": {"id": "serfdom:work_post", "count": 1}
+}

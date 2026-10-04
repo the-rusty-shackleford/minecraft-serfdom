@@ -1,0 +1,146 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.144'
+}
+version = mod_version
+group = 'com.chunkworks.serfdom'
+base { archivesName = 'serfdom' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+repositories {
+    mavenLocal { content { includeGroup 'com.chunkworks.carried' } }
+    mavenCentral()
+    // Farmer's Delight is published on Modrinth's maven, not Central.
+    maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
+}
+// Village Deed 2.2.0, the village protocol and its claims: built in the sibling repo (its v2.2.0
+// tag), not bundled. Optional at run time: without it nobody's village is bought.
+def villageDeed = files('../minecraft-village-deed/build/libs/villagedeed-2.2.0.jar')
+// Farmer's Delight 1.3.3 (sha1 55ea87de, the box's jar): its tomatoes and rice. Optional.
+def farmersDelight = 'maven.modrinth:farmers-delight:wpkbWnVh'
+// Thief 1.2.4: Village Deed requires it, so the gametest server runs it as the pack does.
+def thief = 'maven.modrinth:thief:Zhr0tVOO'
+sourceSets { domain; gametest }
+def verificationDirectories = [file('run/config'), file('run/booth/config')]
+def boothDirectory = file('run/booth')
+def gameTestLog = file('run/logs/latest.log')
+def boothLog = file('run/booth/logs/latest.log')
+var resetWorld = tasks.register('resetGameTestWorld', Delete) { delete 'run/world' }
+var verification = tasks.register('prepareVerification') {
+    doLast {
+        new File('run/server.properties').with { if (!exists()) text = 'max-tick-time=0\n' }
+        verificationDirectories.each { config ->
+            config.mkdirs()
+            new File(config, 'fml.toml').text = 'disableConfigWatcher=true\nearlyWindowControl=false\n'
+        }
+    }
+}
+var structures = tasks.register('copyGameTestStructures', Copy) {
+    from 'devtools/gameteststructures'
+    into 'run/gameteststructures'
+}
+def boothShots = file('run/booth/screenshots')
+var boothWorld = tasks.register('prepareBoothWorld', Sync) {
+    // The booth plays a copy of the GameTest world, silent, and saves into the copy.
+    outputs.upToDateWhen { false }
+    doFirst { boothShots.deleteDir() }
+    from 'run/world'
+    into 'run/booth/saves/booth'
+    exclude 'session.lock'
+    doLast {
+        def directory = boothDirectory
+        directory.mkdirs()
+        new File(directory, 'options.txt').text = 'onboardAccessibility:false\nnarrator:0\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:4\nsimulationDistance:5\nmaxFps:60\nguiScale:2\ntutorialStep:none\n'
+    }
+}
+neoForge {
+    version = '21.1.248'
+    parchment { minecraftVersion = '1.21.1'; mappingsVersion = '2024.11.17' }
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gametest
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'serfdom'
+            systemProperty 'serfdom.trace', 'true'
+            taskBefore structures
+            taskBefore resetWorld
+            taskBefore verification
+        }
+        photoBooth {
+            client()
+            sourceSet = sourceSets.gametest
+            gameDirectory = file('run/booth')
+            systemProperty 'serfdom.booth', 'true'
+            programArguments.addAll('--quickPlaySingleplayer', 'booth', '--width', '1280', '--height', '720')
+            taskBefore boothWorld
+            taskBefore verification
+        }
+        configureEach { logLevel = org.slf4j.event.Level.INFO }
+    }
+    mods {
+        serfdom { sourceSet(sourceSets.domain); sourceSet(sourceSets.main) }
+        serfdom_gametest { sourceSet(sourceSets.gametest) }
+    }
+    addModdingDependenciesTo(sourceSets.gametest)
+}
+neoForge.runs.matching { !(it.name in ['gameTestServer', 'photoBooth']) }.configureEach {
+    loadedMods = neoForge.mods.matching { it.name != 'serfdom_gametest' }
+}
+// The gametest run's classpath gets main's dependencies (Carried among them) as well as its classes.
+configurations { gametestImplementation.extendsFrom implementation }
+dependencies {
+    // Carried: the hire fee is counted and taken from everything the player carries, their bags
+    // included. Nested, as every consumer nests it; `./gradlew publishToMavenLocal` in
+    // minecraft-carried first.
+    jarJar(implementation('com.chunkworks.carried:carried')) {
+        version {
+            strictly '[1.0,2.0)'
+            prefer '1.0.0'
+        }
+    }
+    implementation sourceSets.domain.output
+    gametestImplementation sourceSets.main.output
+    gametestImplementation sourceSets.domain.output
+    testImplementation sourceSets.domain.output
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.9.2'
+    // Compile only: Village Deed is the pack's; the gametest server runs it, as the pack does.
+    compileOnly villageDeed
+    gametestCompileOnly villageDeed
+    gametestRuntimeOnly villageDeed
+    gametestRuntimeOnly thief
+    compileOnly farmersDelight
+    gametestCompileOnly farmersDelight
+    gametestRuntimeOnly farmersDelight
+    // Backpacks+ on the gametest server only, so a fee is proven paid out of a real bag; never bundled.
+    gametestRuntimeOnly files('../minecraft-backpacks-plus/build/libs/backpacksplus-0.7.0.jar')
+}
+tasks.named('test', Test) { useJUnitPlatform() }
+jar { from sourceSets.domain.output }
+def releaseVersion = version.toString()
+tasks.named('processResources') {
+    inputs.property 'version', releaseVersion
+    filesMatching('META-INF/neoforge.mods.toml') { expand version: releaseVersion }
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.named('runGameTestServer') { task ->
+    doLast {
+        def log = gameTestLog.text
+        def passed = log =~ /All (\d+) required tests passed/
+        if (!passed.find() || log.contains('Mod loading has failed')) throw new GradleException('GameTests failed; see run/logs/latest.log')
+        task.logger.lifecycle('GameTests: ' + passed.group(1) + ' passed')
+    }
+}
+tasks.named('runPhotoBooth') {
+    mustRunAfter 'runGameTestServer'
+    doLast {
+        def log = boothLog.text
+        if (!log.contains('serfdom booth: COMPLETE') || log.contains('serfdom booth: FAIL')) throw new GradleException('Serfdom booth failed; see run/booth/logs/latest.log')
+    }
+}
+tasks.named('prepareBoothWorld') { mustRunAfter 'runGameTestServer' }
+tasks.named('check') {
+    if (!project.hasProperty('skipGameTests')) dependsOn 'runGameTestServer'
+    if (!project.hasProperty('skipBooth')) dependsOn 'runPhotoBooth'
+}

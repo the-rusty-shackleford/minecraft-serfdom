@@ -1,0 +1,35 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="AGPL-3.0-or-later"
+[[mods]]
+modId="serfdom"
+version="${version}"
+displayName="Serfdom"
+authors="Rusty Shackleford and nfx"
+description='''Villagers you hire live and work at your base. Give a worker a bed and a Work Post, and it cuts down the trees or harvests the crops around the post and sorts what it gathers into your chests.'''
+[[mixins]]
+config="serfdom.mixins.json"
+[[dependencies.serfdom]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.248,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.serfdom]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+[[dependencies.serfdom]]
+modId="villagedeed"
+type="optional"
+versionRange="[2.2,)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.serfdom]]
+modId="farmersdelight"
+type="optional"
+versionRange="*"
+ordering="AFTER"
+side="BOTH"

@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.chunkworks.serfdom.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["EntityMixin", "MobAccessor", "VillagerMixin"],
+  "client": ["EntityRendererMixin"],
+  "injectors": {"defaultRequire": 1}
+}
