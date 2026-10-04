@@ -1,6 +1,7 @@
 # Serfdom
 
-**0.1.0 (phase 1a): built and gated on 2026-10-04. Not released, not yet seen by Rusty.**
+**0.1.0 (phase 1a): built and gated on 2026-10-04. Not released. Rusty has passed the booth
+photos and the art; he has not yet seen it in play.**
 
 | What | Where it stands |
 |---|---|
@@ -85,8 +86,9 @@ Each phase is previewed to Rusty before it is built.
 
 ## Next
 
-- Rusty vets 1a: the booth photos, and a worker felling and farming at his base. Then the
-  release on his go: a public repo, a tag, a GitHub release, and a new `add-file` in the pack.
+- Rusty vets 1a. The booth photos and the art (Work Post board, chain lead) passed on
+  2026-10-04 ("Photos look good"). Still to see: a worker felling and farming at his base. Then
+  the release on his go: a public repo, a tag, a GitHub release, and a new `add-file` in the pack.
 - 1b: cooking and blacksmith, the "keep X in stock" lists on the post, smelting before crafting.
   Its preview comes first.
 - Phase 2 needs Vanilla Wheels 1.11's cargo hook and Village Law's `CaseSettledEvent`.
