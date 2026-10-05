@@ -9,15 +9,16 @@ import java.util.List;
  * the screen, which draws the rest. It must fit at GUI scale 5 on Rusty's 3440×1440 screen
  * (688×288). A slot's position is where its item is drawn; its frame is a pixel larger all round. */
 public final class WorkerLayout {
-    public static final int WIDTH = 312, HEIGHT = 228, PAD = 8, SLOT = 18, LINE = 11;
+    public static final int WIDTH = 312, HEIGHT = 239, PAD = 8, SLOT = 18, LINE = 11;
     /** The wearing slots' column: the first item's corner; each next one a slot lower. */
     public static final int WEAR_X = PAD + 1, WEAR_Y = 23;
     /** The worker's portrait. */
     public static final Rect PORTRAIT = new Rect(30, 22, 50, 72);
-    /** The details: label and value columns, first row. */
-    public static final int DETAIL_X = 88, VALUE_X = DETAIL_X + 58, DETAIL_Y = 24;
+    /** The details: label and value columns, first row, and how many rows (profession, status, bed,
+     * job, hunger, need). */
+    public static final int DETAIL_X = 88, VALUE_X = DETAIL_X + 58, DETAIL_Y = 24, DETAIL_ROWS = 6;
     /** The buttons: three on the first row under the details, Set free alone on the second. */
-    public static final int BUTTON_W = 68, BUTTON_H = 20, BUTTON_GAP = 6, BUTTON_Y = DETAIL_Y + 5 * LINE + 4, FREE_Y = BUTTON_Y + BUTTON_H + 4;
+    public static final int BUTTON_W = 68, BUTTON_H = 20, BUTTON_GAP = 6, BUTTON_Y = DETAIL_Y + DETAIL_ROWS * LINE + 4, FREE_Y = BUTTON_Y + BUTTON_H + 4;
     /** The player's inventory: the label, the three rows' first item corner, the hotbar's. */
     public static final int INVENTORY_X = (WIDTH - 9 * SLOT) / 2 + 1, INVENTORY_LABEL_Y = FREE_Y + BUTTON_H + 6,
             INVENTORY_Y = INVENTORY_LABEL_Y + 11, HOTBAR_Y = INVENTORY_Y + 3 * SLOT + 4;
@@ -43,7 +44,7 @@ public final class WorkerLayout {
     }
 
     /** effects: the frame of the details' rows. */
-    public static Rect details() { return new Rect(DETAIL_X, DETAIL_Y, WIDTH - PAD - DETAIL_X, 5 * LINE); }
+    public static Rect details() { return new Rect(DETAIL_X, DETAIL_Y, WIDTH - PAD - DETAIL_X, DETAIL_ROWS * LINE); }
 
     /** effects: the button at {@code index} on the first row (0 Assign bed, 1 Assign job, 2 Clear job). */
     public static Rect button(int index) {

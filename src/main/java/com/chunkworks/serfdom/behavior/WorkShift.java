@@ -85,6 +85,14 @@ public final class WorkShift extends Behavior<Villager> {
         if (worker.isTrading() || worker.isSleeping()) return;
         var post = post(level, worker);
         if (post.isEmpty()) return;
+        // Starved (D-0005): it works no more, showing it is hungry, until it has eaten.
+        if (com.chunkworks.serfdom.Appetite.starved(worker)) {
+            if (mode != Mode.WAIT) { if (task != null) task.abandon(level, worker); task = null; worker.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET); }
+            mode = Mode.WAIT;
+            waitUntil = now + WAIT;
+            Humming.stop(worker, now);
+            return;
+        }
         var job = Jobs.get(post.get().job());
         if (job.isEmpty()) { Workers.shiftNeed(worker, Optional.empty()); idle(worker, post.get(), now); return; }
         // A captive's song (D-0003): begun at a work action, carried through the walks and the plans

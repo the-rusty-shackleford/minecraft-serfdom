@@ -142,6 +142,24 @@ def icon_bed(img, ox):
     put(img, ox + 12, 12, OAK[1]); put(img, ox + 3, 12, OAK[1])
 
 
+def icon_hungry(img, ox):
+    # An empty wooden bowl, its dark inside showing over the rim: hungry (D-0005).
+    for x in range(3, 13):
+        put(img, ox + x, 7, OAK[4])
+    for x in range(4, 12):
+        put(img, ox + x, 8, "#3b3026")
+    for x, y0 in ((3, 8), (12, 8)):
+        put(img, ox + x, y0, OAK[3])
+    for x in range(3, 13):
+        put(img, ox + x, 9, OAK[3])
+    for x in range(4, 12):
+        put(img, ox + x, 10, OAK[2])
+    for x in range(5, 11):
+        put(img, ox + x, 11, OAK[1])
+    for x in range(6, 10):
+        put(img, ox + x, 12, OAK[0])
+
+
 def icon_tool(img, ox):
     # An axe, greyed, with a red stroke through it: no tool.
     for i in range(7):
@@ -209,7 +227,7 @@ def icon_chest_full(img, ox):
 
 def needs():
     """One 16x16 bubble per need, in the order Need declares them."""
-    icons = [icon_bed, icon_tool, icon_station, icon_fuel, icon_materials, icon_chest_full]
+    icons = [icon_bed, icon_hungry, icon_tool, icon_station, icon_fuel, icon_materials, icon_chest_full]
     sheet = canvas(16 * len(icons), 16)
     ground = bubble()
     for i, draw in enumerate(icons):

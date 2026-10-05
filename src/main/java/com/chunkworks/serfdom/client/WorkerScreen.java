@@ -19,13 +19,17 @@ import net.neoforged.neoforge.network.PacketDistributor;
 /** The Worker Screen (D-0001, D-0003, D-0004): the worker drawn beside its four wearing slots, its
  * profession and level, its status (hired, captive, in chains, escaping, a child), bed, job and
  * need, four buttons, and the player's inventory below, laid out as {@link WorkerLayout} says. The
- * menu opens first and the view follows it; until the view comes only the slots show. Assign job is
+ * menu opens first and the view follows it; until the view comes only the slots show. Hunger shows
+ * as the HUD's ten drumsticks (D-0005). Assign job is
  * greyed until the worker has a bed, and for a child; Clear job until it has a job. Assign bed and
  * Assign job close the screen so the player can click the bed or the post. Set free asks again
  * before it lets the worker go. */
 public final class WorkerScreen extends AbstractContainerScreen<WorkerMenu> {
     private static final int TITLE = 0xFFD37F, LABEL = 0xA0A0A0, TEXT = 0xE0E0E0, NEED = 0xFF7F7F, CAPTIVE = 0xD8A060;
     private static final int SLOT_DARK = 0xFF373737, SLOT_LIGHT = 0xFFFFFFFF, SLOT_FILL = 0xFF8B8B8B;
+    private static final net.minecraft.resources.ResourceLocation FOOD_EMPTY = net.minecraft.resources.ResourceLocation.withDefaultNamespace("hud/food_empty"),
+            FOOD_HALF = net.minecraft.resources.ResourceLocation.withDefaultNamespace("hud/food_half"),
+            FOOD_FULL = net.minecraft.resources.ResourceLocation.withDefaultNamespace("hud/food_full");
     /** True while the portrait is drawn, so the worker's need icon is not drawn over it. */
     private static boolean portrait;
     @Nullable private Screens.WorkerView view;
@@ -139,9 +143,23 @@ public final class WorkerScreen extends AbstractContainerScreen<WorkerMenu> {
                 status == Screens.Status.HIRED || status == Screens.Status.CHILD ? TEXT : CAPTIVE);
         row(g, y += WorkerLayout.LINE, "screen.serfdom.bed", view.bed(), TEXT);
         row(g, y += WorkerLayout.LINE, "screen.serfdom.job", view.job(), TEXT);
+        y += WorkerLayout.LINE;
+        if (view.hunger() < 0) row(g, y, "screen.serfdom.hunger", Component.translatable("screen.serfdom.hunger.none"), TEXT);
+        else drumsticks(g, y, view.hunger());
         var need = Need.of(view.need());
         row(g, y += WorkerLayout.LINE, "screen.serfdom.need", need.<Component>map(n -> Component.translatable("need.serfdom." + n.name().toLowerCase()))
                 .orElse(Component.translatable("screen.serfdom.need.none")), need.isPresent() ? NEED : TEXT);
+    }
+
+    /** effects: the hunger row: ten of the HUD's drumsticks for {@code halves} half points. */
+    private void drumsticks(GuiGraphics g, int y, int halves) {
+        g.drawString(font, Component.translatable("screen.serfdom.hunger"), WorkerLayout.DETAIL_X, y, LABEL);
+        for (int i = 0; i < 10; i++) {
+            int x = WorkerLayout.VALUE_X + i * 8;
+            g.blitSprite(FOOD_EMPTY, x, y - 1, 9, 9);
+            if (halves >= 2 * i + 2) g.blitSprite(FOOD_FULL, x, y - 1, 9, 9);
+            else if (halves == 2 * i + 1) g.blitSprite(FOOD_HALF, x, y - 1, 9, 9);
+        }
     }
 
     private void row(GuiGraphics g, int y, String label, Component value, int colour) {

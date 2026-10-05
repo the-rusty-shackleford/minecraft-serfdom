@@ -35,6 +35,20 @@ public final class Posts {
         return level.getBlockEntity(at.pos()) instanceof WorkPostBlockEntity post ? Optional.of(post) : Optional.empty();
     }
 
+    /** effects: the loaded posts {@code owner} owns in {@code level} within {@code range} blocks of
+     * {@code at}, nearest first (D-0005: the canteen). */
+    public static java.util.List<WorkPostBlockEntity> near(net.minecraft.server.level.ServerLevel level, BlockPos at, double range, java.util.UUID owner) {
+        var posts = SERVER.get(level.dimension());
+        if (posts == null) return java.util.List.of();
+        var out = new java.util.ArrayList<WorkPostBlockEntity>();
+        for (var pos : posts) {
+            if (pos.distSqr(at) > range * range || !level.isLoaded(pos)) continue;
+            if (level.getBlockEntity(pos) instanceof WorkPostBlockEntity post && post.owner().filter(owner::equals).isPresent()) out.add(post);
+        }
+        out.sort(java.util.Comparator.comparingDouble(p -> p.getBlockPos().distSqr(at)));
+        return out;
+    }
+
     /** effects: the posts a client has loaded in {@code dimension}. */
     public static Set<BlockPos> client(ResourceKey<Level> dimension) { return CLIENT.getOrDefault(dimension, Set.of()); }
 

@@ -7,10 +7,13 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.4.0: phase 1 (woodcutting and farming, cooking and the blacksmith), phase 2a, the
-capture (D-0003), and phase 2b, what a worker wears (D-0004). The rest of the plan:
+This is 0.5.0:
+- phase 1: woodcutting and farming, cooking and the blacksmith;
+- phase 2a: the capture (D-0003);
+- phase 2b: what a worker wears (D-0004);
+- phase 3: hunger and meals (D-0005).
 
-- **3:** hunger and cooking meals.
+The rest of the plan:
 - **4:** wallets, trade between villagers, and the For Sale block.
 - **5:** raids and defending the base.
 
@@ -31,6 +34,7 @@ capture (D-0003), and phase 2b, what a worker wears (D-0004). The rest of the pl
      [What a worker wears](#what-a-worker-wears));
    - its profession and level;
    - its bed and its job;
+   - its hunger, as ten drumsticks;
    - what it needs, if anything;
    - your inventory below.
 
@@ -159,6 +163,37 @@ When a worker stops being yours:
 A piece put on through the screen always drops whole when the villager dies, whoever it belongs
 to by then. Catch the escapee again, or kill it, to get your gear back.
 
+### Meals
+
+Workers grow hungry and eat breakfast and dinner. Hired workers and captives alike; children and
+free villagers don't hunger.
+
+- **Hunger** runs from 20 down to 0, like yours. A waking hour costs a point and a sleeping hour
+  half a point, so two meals a day keep a worker fed. Below half it works slower, down to half
+  speed just short of 0. At 0 it stops working until it has eaten. Hunger never kills.
+- **Breakfast (0–2000) and dinner (10000–12000):** a worker that isn't full eats once in each.
+  Below half at any other time, it breaks off its work, or the meeting, to eat. It never eats
+  asleep, in chains, while escaping, or without a bed.
+- **Where the food comes from,** the first that has some:
+  1. **Its home chest:** the chest (or barrel, or any storage of 18 slots or more) nearest its bed,
+     within 8 blocks.
+  2. **The canteen:** the chests of any of your Work Posts within 48 blocks of its bed, nearest
+     first. Your cook's kitchen feeds everyone.
+  3. **Cooking:** ingredients from its home chest, cooked at a free furnace, smoker, campfire,
+     stove or Farmer's Delight pot within 16 blocks of the home chest, or bread and stews made at
+     a crafting table. Fuel comes from the home chest. A furnace or pot you are using is left
+     alone.
+  4. **Raw food,** only when nothing near home can cook it.
+- **What it eats:** ready food (bread, cooked meat, carrots, Farmer's Delight's meals), the most
+  plentiful first, one at a time until full, never one it would overshoot on by more than half.
+  - It never eats food with a harmful effect (rotten flesh, raw chicken, suspicious stew).
+  - It never eats what `#serfdom:not_eaten` lists: golden apples, chorus fruit, Farmer's
+    Delight's dough, pasta and crust.
+  - Raw meat and potatoes are cooked first when they can be.
+- You see it eat, food in hand, with crumbs. Bowls and anything it cooked but didn't eat go back to
+  its home chest.
+- **Buying food** with emeralds comes with wallets in phase 4.
+
 ### Children
 
 A child of two villagers you own (hired) is yours, hired, and keeps the bed it was born into. It
@@ -241,7 +276,8 @@ It stops when every row is met. A row never uses up what another row keeps.
 - **Several workers.** Up to four on one post claim the station they use and what they make, so
   none makes what another already is.
 
-Workers don't eat yet (phase 3), so the cook just fills your chests.
+The cook's chests are the canteen: workers whose home chests are empty eat from them (see
+[Meals](#meals)).
 
 ### Storage
 
@@ -259,6 +295,7 @@ When a worker lacks something, an icon floats over its head. You see it within e
 | Icon | Meaning |
 |---|---|
 | A bed | It has no bed. |
+| An empty bowl | It is hungry: below half. |
 | A struck-out axe | There's no tool for its job in the post's chests (a cook's knife too). |
 | A struck-out anvil | No station in the area that a worker can use makes what the list wants. |
 | A flame over coal | No fuel. |
@@ -290,6 +327,9 @@ carries, everything it wears and the chain on it. A cured one is a free villager
 | `escape_chance` | 0.05 | A captive's chance each night of getting up and walking home. |
 | `captive_slowdown` | 0.10 | How much slower a captive walks and works. |
 | `humming` | true | Captives hum their work song at work. |
+| `hunger` | true | Workers grow hungry and eat. Off: nobody hungers and work never slows for it. |
+| `hunger_per_hour` | 1.0 | Hunger points a worker loses each waking hour; half that asleep. |
+| `hungry_floor` | 0.5 | How fast a worker just short of starving works, as a share of its fed pace. |
 | `workers` | true | The whole module: off, nobody can hire and owned villagers live as free ones. |
 
 Jobs are data: `data/<namespace>/serfdom/job/<id>.json`. A file names:
@@ -388,6 +428,16 @@ workshop's stations. The fuel a worker may burn is the item tag `#serfdom:fuel`.
   - The menu opens with vanilla's packet, and the view payload binds the client's menu right after.
   - A piece put on gets drop chance 2.0, vanilla's mark for "always drops whole".
   - `mixin/VillagerWearMixin` gives every villager a player's `hurtArmor` and `hurtHelmet`.
+- **Meals** (D-0005):
+  - Hunger is pure (`domain/Hunger`), saved in its own attachment (`serfdom:belly`) and drained
+    every 100 ticks by a core behaviour (`MealTime`).
+  - That behaviour turns the brain to the `serfdom:meal` activity when `domain/Meals` says a meal
+    is due, as vanilla's panic does. The meal (`HaveMeal`) gives the schedule back, so idle time,
+    breeding and the meeting are untouched.
+  - Each bite is chosen by `domain/Menu` from what `job/Kitchen` reads: the home chest, the
+    canteen (`Posts.near`), and the free stations near home. Dishes are cooked with 1b's recipe
+    book, fuel arithmetic and station loading.
+  - `Jobs.speed` takes hunger's work speed, and the shift waits while starved.
 - **The armour layer** (`client/VillagerArmourLayer`):
   - Vanilla's `HumanoidArmorLayer` draws on a stand-in player model posed from the villager's
     model each frame, by `domain/Fit`: the helmet lifted 2 pixels about the head's own pivot (and

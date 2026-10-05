@@ -192,10 +192,20 @@ final class Yard {
 
     /** effects: the hour set and held: daylight stops. A test in a batch can start well after the
      * batch began, and the GameTest server runs thousands of ticks a second, so with daylight
-     * running a late test found the day nearly over (a smith with 1077 ticks of shift left). */
+     * running a late test found the day nearly over (a smith with 1077 ticks of shift left). Hunger
+     * is off for the batch (D-0005): these batches test other rules, and most hold an hour inside
+     * the breakfast window, where a worker would sit down to eat whatever food lies near its bed,
+     * the cook's counted stock among it. {@link #hourWithHunger} is the meal batches'. */
     static void hour(net.minecraft.server.level.ServerLevel level, long time) {
         level.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DAYLIGHT).set(false, level.getServer());
         level.setDayTime(time);
+        com.chunkworks.serfdom.SerfdomConfig.HUNGER.set(false);
+    }
+
+    /** effects: the hour set and held, with hunger on. */
+    static void hourWithHunger(net.minecraft.server.level.ServerLevel level, long time) {
+        hour(level, time);
+        com.chunkworks.serfdom.SerfdomConfig.HUNGER.set(true);
     }
 
     /** effects: true iff the block at {@code pos} is {@code block}. */

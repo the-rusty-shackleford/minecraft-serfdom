@@ -50,14 +50,20 @@ import org.slf4j.LoggerFactory;
  * being made, one without fuel, one without a knife), and the picker searched and clicked, the row
  * arriving on the server. Then the capture: the chain held on a free farmer, the farmer taken and
  * cuffed, its Worker Screen; and four captives in the trailer, seen through its open doors and from
- * its side. Every step also checks in code what it can. This fixture never ships. */
+ * its side. Then (D-0004) armour, clothes, the robe rule, a child, a captive, an elytra, walking,
+ * the trailer and the dressed Worker Screen; and (D-0005) a worker eating its breakfast, one
+ * cooking at a smoker, and the Worker Screen's drumsticks. Every step also checks in code what it
+ * can. This fixture never ships. */
 @EventBusSubscriber(modid = "serfdom_gametest", value = Dist.CLIENT)
 public final class SerfdomBooth {
     private static final Logger LOG = LoggerFactory.getLogger("Serfdom booth");
     private static int tick;
     private static final List<Integer> workers = new ArrayList<>();
     private static BlockPos post, smithy, kitchen, capture;
-    private static int captive, trailerId, stage, walker;
+    private static int captive, trailerId, stage, walker, eater, griller;
+    private static BlockPos kitchenLot, smokerAt;
+    private static boolean ateShot, cookShot;
+    private static int litSeen;
     private static final List<Integer> aboardIds = new ArrayList<>();
     private static BlockPos lot;
 
@@ -91,7 +97,8 @@ public final class SerfdomBooth {
                     var needs = Need.values();
                     for (int i = 0; i < needs.length; i++) {
                         var v = EntityType.VILLAGER.create(l);
-                        v.moveTo(base.getX() - 5 + 2 * i + 0.5, base.getY(), base.getZ() + 5.5, 180F, 0F);
+                        // Seven, 1.7 apart: all in view, every one within the icons' eight blocks.
+                        v.moveTo(base.getX() + 0.5 + 1.7 * (i - 3), base.getY(), base.getZ() + 5.5, 180F, 0F);
                         v.setYHeadRot(180F);
                         v.setVillagerData(v.getVillagerData().setProfession(i % 2 == 0 ? VillagerProfession.FARMER : VillagerProfession.FLETCHER).setLevel(2));
                         v.setNoAi(true);
@@ -108,7 +115,7 @@ public final class SerfdomBooth {
                 case 60 -> {
                     var shown = workers.stream().map(id -> mc.level.getEntity(id)).filter(e -> e instanceof Villager)
                             .map(e -> Workers.shownNeed((Villager) e).map(Enum::name).orElse("none")).toList();
-                    check(shown.equals(List.of("NO_BED", "NO_TOOL", "NO_STATION", "NO_FUEL", "NO_MATERIALS", "CHEST_FULL")), "the client sees each worker's need: " + shown);
+                    check(shown.equals(List.of("NO_BED", "HUNGRY", "NO_TOOL", "NO_STATION", "NO_FUEL", "NO_MATERIALS", "CHEST_FULL")), "the client sees each worker's need: " + shown);
                     check(mc.level.getBlockEntity(post) instanceof WorkPostBlockEntity be && be.outline() && be.radius() == 4, "the client has the post's outline and radius");
                     photo(mc, "01-post-and-needs");
                     server(mc, p -> Screens.openWorker(p, (Villager) p.serverLevel().getEntity(workers.get(1))));
@@ -481,11 +488,83 @@ public final class SerfdomBooth {
                     photo(mc, "33-worker-screen-dressed");
                     mc.setScreen(null);
                 }
-                case 1050 -> {
+                // ---- 3: meals (D-0005) ----
+                case 1050 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    com.chunkworks.serfdom.SerfdomConfig.HUNGER.set(true);
+                    kitchenLot = lot.offset(44, 0, 0);
+                    for (int x = -8; x <= 10; x++) for (int z = -3; z <= 12; z++) {
+                        l.setBlockAndUpdate(kitchenLot.offset(x, -1, z), Blocks.GRASS_BLOCK.defaultBlockState());
+                        for (int y = 0; y < 5; y++) l.setBlockAndUpdate(kitchenLot.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                    }
+                    var foot = net.minecraft.world.level.block.Blocks.RED_BED.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH);
+                    // Beds to the north, chests and the smoker to the south, the camera beyond them looking
+                    // back north: the workers face it as they eat at their chests and wait by the smoker.
+                    // The eater: a bed, a chest of bread.
+                    var bedA = kitchenLot.offset(-1, 0, -1);
+                    l.setBlockAndUpdate(bedA.south(), foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.FOOT));
+                    l.setBlockAndUpdate(bedA, foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.HEAD));
+                    l.setBlockAndUpdate(kitchenLot.offset(-1, 0, 5), Blocks.CHEST.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
+                    ((net.minecraft.world.Container) l.getBlockEntity(kitchenLot.offset(-1, 0, 5))).setItem(0, new ItemStack(Items.BREAD, 8));
+                    // The griller: a bed, a chest of raw beef and coal, a smoker.
+                    var bedB = kitchenLot.offset(5, 0, -1);
+                    l.setBlockAndUpdate(bedB.south(), foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.FOOT));
+                    l.setBlockAndUpdate(bedB, foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.HEAD));
+                    l.setBlockAndUpdate(kitchenLot.offset(6, 0, 5), Blocks.CHEST.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
+                    var larder = (net.minecraft.world.Container) l.getBlockEntity(kitchenLot.offset(6, 0, 5));
+                    larder.setItem(0, new ItemStack(Items.BEEF, 4));
+                    larder.setItem(1, new ItemStack(Items.COAL, 2));
+                    smokerAt = kitchenLot.offset(3, 0, 5);
+                    // Its fire toward the camera.
+                    l.setBlockAndUpdate(smokerAt, Blocks.SMOKER.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.SOUTH));
+                });
+                // A few ticks on: vanilla registers a bed as a home in a task of its own after placing it.
+                case 1056 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    var bedA = kitchenLot.offset(-1, 0, -1);
+                    var bedB = kitchenLot.offset(5, 0, -1);
+                    for (int i = 0; i < 2; i++) {
+                        var v = EntityType.VILLAGER.create(l);
+                        v.moveTo(kitchenLot.getX() + (i == 0 ? -0.5 : 4.5), kitchenLot.getY(), kitchenLot.getZ() + 1.5, 0F, 0F);
+                        v.setVillagerData(v.getVillagerData().setProfession(i == 0 ? VillagerProfession.FARMER : VillagerProfession.BUTCHER).setLevel(2));
+                        v.setPersistenceRequired();
+                        l.addFreshEntity(v);
+                        Workers.hire(l, v, p, Optional.empty());
+                        check(Workers.assignBed(l, v, i == 0 ? bedA : bedB) == Workers.Picked.OK, "a bed for the " + (i == 0 ? "eater" : "griller"));
+                        com.chunkworks.serfdom.Appetite.set(v, new com.chunkworks.serfdom.Appetite.Belly(new com.chunkworks.serfdom.domain.Hunger(i == 0 ? 5 : 4),
+                                com.chunkworks.serfdom.domain.Meals.Times.NONE));
+                        if (i == 0) eater = v.getId(); else griller = v.getId();
+                    }
+                    p.teleportTo(l, kitchenLot.getX() + 2.5, kitchenLot.getY() + 0.4, kitchenLot.getZ() + 9.0, 180F, 14F);
+                    mc.execute(() -> mc.options.hideGui = true);
+                });
+                case 1500 -> {
+                    check(ateShot, "a worker was photographed eating");
+                    check(cookShot, "a worker was photographed by its lit smoker");
+                    mc.options.hideGui = false;
+                    server(mc, p -> {
+                        var l = p.serverLevel();
+                        var v = (Villager) l.getEntity(eater);
+                        com.chunkworks.serfdom.Appetite.set(v, new com.chunkworks.serfdom.Appetite.Belly(new com.chunkworks.serfdom.domain.Hunger(13.5),
+                                com.chunkworks.serfdom.Appetite.of(v).times()));
+                        // Fed, it wanders; the screen holds only within eight blocks of it.
+                        v.setNoAi(true);
+                        p.teleportTo(l, v.getX(), v.getY(), v.getZ() + 3.0, 180F, 10F);
+                        Screens.openWorker(p, v);
+                    });
+                }
+                case 1530 -> {
+                    var screen = screen(mc, WorkerScreen.class, "the eater's screen opens");
+                    check(screen.view() != null && screen.view().hunger() == 14, "fourteen half drumsticks: " + (screen.view() == null ? "no view" : screen.view().hunger()));
+                    photo(mc, "36-worker-screen-hunger");
+                    mc.setScreen(null);
+                }
+                case 1550 -> {
                     LOG.info("serfdom booth: COMPLETE");
                     mc.stop();
                 }
                 default -> {
+                    if (tick > 1060 && tick < 1500) meals(mc);
                     if (tick > 905 && tick < 950) server(mc, p -> {
                         var v = p.serverLevel().getEntity(walker);
                         if (v != null) v.setPos(v.getX() + 0.12, v.getY(), v.getZ());
@@ -554,6 +633,24 @@ public final class SerfdomBooth {
         var stack = new ItemStack(item);
         stack.set(net.minecraft.core.component.DataComponents.DYED_COLOR, new net.minecraft.world.item.component.DyedItemColor(rgb, true));
         return stack;
+    }
+
+    /** effects: the meal photographs, each taken the first tick the client sees it: the eater with
+     * bread in its hand at its chest, the griller standing by its lit smoker. */
+    private static void meals(Minecraft mc) {
+        if (!ateShot && mc.level.getEntity(eater) instanceof Villager v && v.getMainHandItem().is(Items.BREAD)) {
+            photo(mc, "34-eating");
+            ateShot = true;
+        }
+        var smoker = mc.level.getBlockState(smokerAt);
+        boolean lit = smoker.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT) && smoker.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT);
+        if (!lit) litSeen = 0;
+        else if (litSeen == 0) litSeen = tick;
+        // Ten ticks after the fire is first seen: the world's mesh is redrawn a few frames after a block changes.
+        if (!cookShot && lit && tick >= litSeen + 10 && mc.level.getEntity(griller) instanceof Villager g && g.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(smokerAt)) < 9) {
+            photo(mc, "35-cooking");
+            cookShot = true;
+        }
     }
 
     /** effects: clicks the screen's button labelled {@code label}. */

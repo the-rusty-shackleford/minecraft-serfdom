@@ -67,6 +67,11 @@ public final class Serfdom {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<LongOpenHashSet>> PLACED_LOGS = ATTACHMENTS.register("placed_logs",
             () -> AttachmentType.builder(() -> new LongOpenHashSet()).serialize(PlacedLogs.CODEC, s -> !s.isEmpty()).build());
 
+    /** A worker's hunger and meal times (D-0005), saved with it; changed every few seconds, so kept
+     * apart from its {@link Worker} record. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Appetite.Belly>> BELLY = ATTACHMENTS.register("belly",
+            () -> AttachmentType.builder(() -> Appetite.Belly.FULL).serialize(Appetite.Belly.CODEC).build());
+
     /** Whether the chain is on a villager (D-0003); synced to the players that see it, so their
      * game draws the cuffs and knows a click on the trailer is a load. Never saved: the worker's
      * state is what is saved, and this is set from it as the villager joins. */
@@ -83,6 +88,9 @@ public final class Serfdom {
     public static final DeferredHolder<Activity, Activity> HELD = ACTIVITIES.register("held", () -> new Activity("serfdom_held"));
     /** A captive walking home to the village it was taken from. */
     public static final DeferredHolder<Activity, Activity> ESCAPE = ACTIVITIES.register("escape", () -> new Activity("serfdom_escape"));
+
+    /** A worker's meal (D-0005): it takes over the worker's day as a panic does, and gives it back. */
+    public static final DeferredHolder<Activity, Activity> MEAL = ACTIVITIES.register("meal", () -> new Activity("serfdom_meal"));
 
     /** One note of a captive's work song: the villager's own hum, heard within eight blocks. */
     public static final DeferredHolder<net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundEvent> HUM = SOUNDS.register("captive.hum",
@@ -108,7 +116,7 @@ public final class Serfdom {
             if (e.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) e.accept(WORK_POST_ITEM);
             if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) e.accept(CHAIN_LEAD);
         });
-        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("4")));
+        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("5")));
         NeoForge.EVENT_BUS.addListener((AddReloadListenerEvent e) -> e.addListener(new Jobs()));
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> Hire.registerCommand(e.getDispatcher()));
         Hire.listen();

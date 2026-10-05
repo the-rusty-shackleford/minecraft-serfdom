@@ -34,8 +34,9 @@ public final class Screens {
      * on its way home, or a child, which cannot take a post. */
     public enum Status { HIRED, CAPTIVE, CUFFED, ESCAPING, CHILD }
 
-    /** What the Worker Screen shows. */
-    public record WorkerView(int entity, Component name, Component profession, int level, Component bed, Component job, byte need, boolean hasBed, boolean hasPost, Status status) implements CustomPacketPayload {
+    /** What the Worker Screen shows; {@code hunger} in half drumsticks (0 to 20), or &minus;1 for a
+     * worker that does not hunger (D-0005). */
+    public record WorkerView(int entity, Component name, Component profession, int level, Component bed, Component job, byte need, byte hunger, boolean hasBed, boolean hasPost, Status status) implements CustomPacketPayload {
         public static final Type<WorkerView> TYPE = new Type<>(Serfdom.id("worker_view"));
         public static final StreamCodec<RegistryFriendlyByteBuf, WorkerView> CODEC = StreamCodec.of((buf, v) -> {
             buf.writeVarInt(v.entity);
@@ -45,12 +46,13 @@ public final class Screens {
             ComponentSerialization.STREAM_CODEC.encode(buf, v.bed);
             ComponentSerialization.STREAM_CODEC.encode(buf, v.job);
             buf.writeByte(v.need);
+            buf.writeByte(v.hunger);
             buf.writeBoolean(v.hasBed);
             buf.writeBoolean(v.hasPost);
             buf.writeEnum(v.status);
         }, buf -> new WorkerView(buf.readVarInt(), ComponentSerialization.STREAM_CODEC.decode(buf), ComponentSerialization.STREAM_CODEC.decode(buf),
                 buf.readVarInt(), ComponentSerialization.STREAM_CODEC.decode(buf), ComponentSerialization.STREAM_CODEC.decode(buf),
-                buf.readByte(), buf.readBoolean(), buf.readBoolean(), buf.readEnum(Status.class)));
+                buf.readByte(), buf.readByte(), buf.readBoolean(), buf.readBoolean(), buf.readEnum(Status.class)));
         @Override public Type<WorkerView> type() { return TYPE; }
     }
 
@@ -154,7 +156,8 @@ public final class Screens {
         if (player.connection != null && player.connection.hasChannel(payload.type())) PacketDistributor.sendToPlayer(player, payload);
     }
 
-    static WorkerView view(Villager worker) {
+    /** effects: what the Worker Screen shows of {@code worker} now. Public for the GameTests. */
+    public static WorkerView view(Villager worker) {
         var w = Workers.of(worker);
         var profession = Workers.profession(worker);
         var none = Component.translatable("screen.serfdom.none");
@@ -165,7 +168,8 @@ public final class Screens {
             return Component.translatable("screen.serfdom.job_at", name, p.pos().getX(), p.pos().getY(), p.pos().getZ());
         }).orElse(none);
         return new WorkerView(worker.getId(), Workers.name(worker), profession, worker.getVillagerData().getLevel(), bed, job,
-                worker.getData(Serfdom.NEED), w.bed().isPresent(), w.post().isPresent(), status(worker, w));
+                worker.getData(Serfdom.NEED), (byte) (Appetite.hungers(worker) ? Appetite.of(worker).hunger().halves() : -1),
+                w.bed().isPresent(), w.post().isPresent(), status(worker, w));
     }
 
     /** effects: what the worker is, the first that applies: a child, in chains, on its way home, a

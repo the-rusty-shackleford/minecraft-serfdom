@@ -1,5 +1,11 @@
 # Serfdom
 
+**0.5.0 (phase 3, hunger and meals, D-0005): built and gated on 2026-10-05. Not released.**
+Gate: `devtools/verification/release-0.5.0.md`. Rusty's call: the canteen (a worker eats from its
+home chest, then from its owner's posts' chests within 48 blocks of its bed). Not seen by Rusty:
+photos 34 to 36 and the new hungry icon in photo 01. 0.5.0 carries 0.4.0 and 0.3.0 whole and ships
+in their place, with the same two siblings.
+
 **0.4.0 (phase 2b, what a worker wears, D-0004): built and gated on 2026-10-05. Not released.**
 Gate: `devtools/verification/release-0.4.0.md`. Rusty took every call of the preview: leggings take
 the robe off; armour wears as on a player; set free drops the gear, while escaping or freed by the
@@ -23,7 +29,7 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | No remote yet |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md` (all in `devtools/verification/`) |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md` (all in `devtools/verification/`) |
 | Release | Only on Rusty's go, as a new jar in the pack, with Vanilla Wheels 1.11.0 and Village Law 1.1.0 |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
@@ -32,8 +38,8 @@ village ids) and Farmer's Delight 1.3 (tomatoes, rice).
 
 The villager overhaul in Rusty's spec (`~/Downloads/serfdom-mod-spec.md`), in five phases. Phase 2
 is split as phase 1 was: 2a, the capture, is [D-0003](decisions/D-0003.md); 2b, equipment slots
-and the armour layer, is [D-0004](decisions/D-0004.md). Phase 1 is [D-0001](decisions/D-0001.md),
-split by Rusty into:
+and the armour layer, is [D-0004](decisions/D-0004.md). Phase 3, hunger and meals, is
+[D-0005](decisions/D-0005.md). Phase 1 is [D-0001](decisions/D-0001.md), split by Rusty into:
 
 - **1a:** hiring, beds, the Work Post, woodcutting, farming, sorting, need icons, the Worker
   Screen, the chain lead, fence gates.
@@ -67,6 +73,8 @@ Each phase is previewed to Rusty before it is built.
   - 2b: `Wardrobe` (who, what fits, Binding, shift-clicks), `Parting` (gear on each way out),
     `Fit` (the armour's stand-in poses, with box maths), `WorkerLayout` (the screen, pinned to
     688×288).
+  - 3: `Hunger` (points, drain, the work speed), `Meals` (when), `Menu` (what, bite by bite);
+    `Pace` gained hunger, `Need` gained `HUNGRY`.
 - `src/main`:
   - `Serfdom` (registries), `SerfdomConfig`.
   - `Worker` (the saved attachment) and `Workers` (state, hire, beds, posts, needs, the tool between
@@ -75,6 +83,9 @@ Each phase is previewed to Rusty before it is built.
     (payloads), `ChainLead`, `PlacedLogs`.
   - 2a: `Captures` (the hold), `Remedies` (saved data, the law's remedy), `Humming`.
   - 2b: `WorkerMenu` (the Worker Screen's menu on the villager's own armour slots).
+  - 3: `Appetite` (the saved belly, `serfdom:belly`), `job/Kitchen` (home chest, canteen, free
+    stations, food facts), `behavior/MealTime` (core: drain, turn to the meal),
+    `behavior/HaveMeal` (the `serfdom:meal` activity), `Posts.near`.
   - `behavior/`: `WorkShift`, `FollowOwner`, `KeepBed`, `OpenGates`, `WorkerNavigation`; 2a:
     `Stay`, `CaptiveNight`, `RunHome`.
   - `job/`: `Jobs` (data), `Woodcutting` + `WoodTask`, `Farming` + `CropTask`, `Storage`, `Tools`;
@@ -90,8 +101,8 @@ Each phase is previewed to Rusty before it is built.
     a captive's golem, its bed and the cats, an owned child and its bed; 2b: a villager's armour
     wear (`VillagerWearMixin`), the hat under a helmet (`VillagerModelMixin`, client).
 - `src/gametest`: `Yard` (fixtures), `Huts` (a village with a guard, from Village Law's tests),
-  `WorkerGameTests`, `WorkshopGameTests`, `CaptiveGameTests`, `EquipmentGameTests`, `SerfdomBooth`,
-  `TestMod`.
+  `WorkerGameTests`, `WorkshopGameTests`, `CaptiveGameTests`, `EquipmentGameTests`, `MealGameTests`,
+  `SerfdomBooth`, `TestMod`. Every batch but the meal batches runs with hunger off (`Yard.hour`).
 - `devtools/art/art.py` draws every texture; `devtools/sound/work_song.py` renders the captives'
   work song to `run/work_song.wav`.
 
@@ -181,14 +192,34 @@ Each phase is previewed to Rusty before it is built.
 - **Vanilla never wears a mob's armour.** `LivingEntity.hurtArmor` is empty; NeoForge's
   `ArmorHurtEvent` route works for any entity once something calls `doHurtEquipment`.
 
+**Met in 3:**
+- **Breeding lives only in vanilla's idle package,** and a worker's idle hours are the meal
+  windows. A meal therefore takes over the activity as vanilla's panic does, and gives the schedule
+  back, rather than holding the hours.
+- **1b's station collect takes a furnace's input back out when its output is empty** (meant for a
+  stalled load). Polled from the start of a meal's cooking, it emptied the raw beef out of the
+  smoker in 20 ticks. A furnace is now emptied only once done or stalled.
+- **Waiting costs hunger:** a worker's hunger drains while it waits by a smoker, so a meal of two
+  steaks onto 4 ends at 19.75, not 20.
+- **Vanilla registers a bed as a home in a server task of its own** after the block is placed. A
+  bed assigned in the same task reads "not a bed"; the booth places beds a few ticks before the
+  workers.
+- **Farmer's Delight's meals carry good effects** (Nourishment, Comfort), so food is refused only
+  for a harmful effect or the `#serfdom:not_eaten` tag.
+- **The existing batches hold hours inside the breakfast window,** where workers would eat the
+  stock the cook tests count. They run with hunger off.
+- **A screenshot taken the tick a block changes** shows the old block: the world's mesh is redrawn
+  a few frames later.
+
 ## Next
 
-- Rusty vets 0.4.0's photos 18 to 33 (armour, clothes, the robe rule, the child, the trailer, the
-  dressed Worker Screen); 0.3.0's photos 05 and 13 to 17 and the song (`run/work_song.wav`); and
+- Rusty vets 0.5.0's photos 34 to 36 and the hungry icon in 01; 0.4.0's photos 18 to 33 (armour,
+  clothes, the robe rule, the child, the trailer, the dressed Worker Screen); 0.3.0's photos 05 and 13 to 17 and the song (`run/work_song.wav`); and
   0.2.0's photos 07 to 12 and the "no station" icon in photo 01.
 - Then the release, on his go: a public repo for Serfdom, tags, GitHub releases; in the pack a new
   `add-file` for Serfdom and `--replaces` for Vanilla Wheels (1.10.1) and Village Law (1.0.0).
-- Phase 3 (hunger and cooking) is next: preview it first.
+- Phase 4 (wallets, trade between villagers, the For Sale block) is next: preview it first. It
+  also brings buying food with emeralds (not captives).
 - Not covered by any test: how the armour looks (the fit, the robe and the hat are judged by the
   booth's photos, and `FitTest` checks the boxes only); Farmer's Delight's placed skillet (left out, D-0002); a pack's much
   larger recipe book (the planner was timed on the gametest server's: 2.6 ms for the eight

@@ -3,7 +3,8 @@ package com.chunkworks.serfdom.domain;
 
 /** How long a worker's action takes (D-0001): the time a player standing on the ground takes to
  * break the block with the same tool, never less than a floor that keeps work visible, divided by
- * the worker's speed (1.25 for a matching profession, times 0.9 for a captive, D-0003). */
+ * the worker's speed (1.25 for a matching profession, times 0.9 for a captive, D-0003, times its
+ * hunger's work speed, D-0005). */
 public final class Pace {
     /** The speed of a worker whose profession matches its job. */
     public static final double BONUS = 1.25;
@@ -14,9 +15,15 @@ public final class Pace {
     /** requires: 0 &le; captiveSlowdown &lt; 1.
      * effects: a worker's speed at its job: {@link #BONUS} when its profession matches the job, and
      * times (1 &minus; captiveSlowdown) when it is a captive; the two stack. */
-    public static double speed(boolean matching, boolean captive, double captiveSlowdown) {
+    public static double speed(boolean matching, boolean captive, double captiveSlowdown) { return speed(matching, captive, captiveSlowdown, 1.0); }
+
+    /** requires: 0 &le; captiveSlowdown &lt; 1, 0 &lt; fed &le; 1.
+     * effects: {@link #speed(boolean, boolean, double)} times {@code fed}, how fast a hungry worker's
+     * actions go ({@link Hunger#workSpeed}, D-0005); the three stack. */
+    public static double speed(boolean matching, boolean captive, double captiveSlowdown, double fed) {
         if (!(captiveSlowdown >= 0 && captiveSlowdown < 1)) throw new IllegalArgumentException("captiveSlowdown " + captiveSlowdown);
-        return (matching ? BONUS : 1.0) * (captive ? 1.0 - captiveSlowdown : 1.0);
+        if (!(fed > 0 && fed <= 1)) throw new IllegalArgumentException("fed " + fed);
+        return (matching ? BONUS : 1.0) * (captive ? 1.0 - captiveSlowdown : 1.0) * fed;
     }
 
     /** effects: the destroy speed of a tool whose base speed is {@code speed} with Efficiency at

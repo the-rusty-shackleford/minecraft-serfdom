@@ -153,7 +153,7 @@ public final class Stations {
     }
 
     /** effects: a campfire's or a stove's cooking slots. */
-    private static List<ItemStack> fire(BlockEntity be) {
+    static List<ItemStack> fire(BlockEntity be) {
         if (be instanceof CampfireBlockEntity c) return c.getItems();
         var slots = FarmersDelightCompat.stoveSlots(be);
         var out = new ArrayList<ItemStack>(slots.getSlots());

@@ -1,0 +1,20 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:golden_apple",
+    "minecraft:enchanted_golden_apple",
+    "minecraft:chorus_fruit",
+    {
+      "id": "farmersdelight:raw_pasta",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:pie_crust",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:wheat_dough",
+      "required": false
+    }
+  ]
+}

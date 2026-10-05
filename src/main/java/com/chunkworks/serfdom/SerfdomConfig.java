@@ -3,7 +3,7 @@ package com.chunkworks.serfdom;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-/** The server's settings, in {@code config/serfdom-server.toml}. Defaults are D-0001's and D-0002's. */
+/** The server's settings, in {@code config/serfdom-server.toml}. Defaults are the decisions'. */
 public final class SerfdomConfig {
     private SerfdomConfig() {}
     private static final ModConfigSpec.Builder B = new ModConfigSpec.Builder();
@@ -40,6 +40,15 @@ public final class SerfdomConfig {
     public static final ModConfigSpec.BooleanValue HUMMING = B
             .comment("Captives at work now and then hum a phrase of their work song.")
             .define("humming", true);
+    public static final ModConfigSpec.BooleanValue HUNGER = B
+            .comment("Workers grow hungry and eat breakfast and dinner (D-0005). Off: nobody hungers, and work never slows for it.")
+            .define("hunger", true);
+    public static final ModConfigSpec.DoubleValue HUNGER_PER_HOUR = B
+            .comment("Hunger points (of 20) a worker loses each waking hour (1200 ticks); half that asleep.")
+            .defineInRange("hunger_per_hour", 1.0, 0.0, 20.0);
+    public static final ModConfigSpec.DoubleValue HUNGRY_FLOOR = B
+            .comment("How fast a worker just short of starving works, as a fraction of its fed pace. Below half hunger its pace falls straight to this; at 0 it works no more.")
+            .defineInRange("hungry_floor", 0.5, 0.05, 1.0);
     public static final ModConfigSpec.BooleanValue WORKERS = B
             .comment("The workers module: hiring, beds, posts and jobs. Off: owned villagers live as free ones and nobody can hire.")
             .define("workers", true);

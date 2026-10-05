@@ -70,7 +70,10 @@ public final class Workers {
      * it is in chains, and rebuilds its brain, so its schedule follows the new state. */
     public static void set(ServerLevel level, Villager villager, Worker worker) {
         if (worker.owned()) villager.setData(Serfdom.WORKER, worker);
-        else villager.removeData(Serfdom.WORKER);
+        else {
+            villager.removeData(Serfdom.WORKER);
+            villager.removeData(Serfdom.BELLY);
+        }
         if (villager.getData(Serfdom.CUFFED) != worker.cuffed()) {
             villager.setData(Serfdom.CUFFED, worker.cuffed());
             villager.syncData(Serfdom.CUFFED);
@@ -302,6 +305,7 @@ public final class Workers {
         var needs = EnumSet.noneOf(Need.class);
         if (!worker.owned()) return needs;
         if (worker.bed().isEmpty()) needs.add(Need.NO_BED);
+        if (Appetite.of(villager).hunger().hungry()) needs.add(Need.HUNGRY);
         var shift = SHIFT_NEEDS.get(villager.getUUID());
         if (shift != null) needs.add(shift);
         return needs;

@@ -6,9 +6,10 @@ import java.util.Optional;
 
 /** What a worker lacks, shown as one icon above its head (D-0001). Declared in priority order:
  * when a worker lacks several things, the first declared is the one shown. Nothing shows when
- * nothing is lacking. */
+ * nothing is lacking. Hungry (D-0005) comes after no bed, since a worker without a bed has no home
+ * chest and the bed is the fix, and before everything else. */
 public enum Need {
-    NO_BED, NO_TOOL, NO_STATION, NO_FUEL, NO_MATERIALS, CHEST_FULL;
+    NO_BED, HUNGRY, NO_TOOL, NO_STATION, NO_FUEL, NO_MATERIALS, CHEST_FULL;
 
     /** effects: the need to show of {@code needs}, the first in declaration order; empty when there
      * are none. */
