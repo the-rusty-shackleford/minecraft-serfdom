@@ -12,8 +12,16 @@ import net.minecraft.world.entity.npc.Villager;
  * find a target in a post's area and work it. */
 public interface Job {
     /** effects: the next target to work in {@code post}'s area, nearest the worker first, leaving
-     * out those {@code skip} rejects (targets it could not reach lately); empty when there is none. */
-    Optional<Task> find(ServerLevel level, Villager worker, WorkPostBlockEntity post, Predicate<BlockPos> skip);
+     * out those {@code skip} rejects (targets it could not reach lately); no task when there is
+     * none, with what the worker lacks when that is why. */
+    Search find(ServerLevel level, Villager worker, WorkPostBlockEntity post, Predicate<BlockPos> skip);
+
+    /** What looking for work found: a task, or none and the need that keeps it from one (empty
+     * when there is simply nothing to do). */
+    record Search(Optional<Task> task, Optional<com.chunkworks.serfdom.domain.Need> need) {
+        public static Search none() { return new Search(Optional.empty(), Optional.empty()); }
+        public static Search of(Optional<Task> task) { return new Search(task, Optional.empty()); }
+    }
 
     /** One target being worked, a tick at a time. */
     interface Task {

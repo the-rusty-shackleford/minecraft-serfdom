@@ -176,6 +176,28 @@ final class Yard {
         return root;
     }
 
+    /** effects: {@code block} placed at the yard position; returns its position. */
+    static BlockPos block(GameTestHelper h, int x, int z, Block block) {
+        var pos = at(h, x, 1, z);
+        h.getLevel().setBlock(pos, block.defaultBlockState(), 3);
+        return pos;
+    }
+
+    /** effects: how many of {@code item} the containers at {@code chests} hold together. */
+    static int count(GameTestHelper h, Item item, BlockPos... chests) {
+        int n = 0;
+        for (var c : chests) n += count(h, c, item);
+        return n;
+    }
+
+    /** effects: the hour set and held: daylight stops. A test in a batch can start well after the
+     * batch began, and the GameTest server runs thousands of ticks a second, so with daylight
+     * running a late test found the day nearly over (a smith with 1077 ticks of shift left). */
+    static void hour(net.minecraft.server.level.ServerLevel level, long time) {
+        level.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DAYLIGHT).set(false, level.getServer());
+        level.setDayTime(time);
+    }
+
     /** effects: true iff the block at {@code pos} is {@code block}. */
     static boolean is(GameTestHelper h, BlockPos pos, Block block) { return h.getLevel().getBlockState(pos).is(block); }
 }

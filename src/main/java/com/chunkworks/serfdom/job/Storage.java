@@ -156,4 +156,95 @@ public final class Storage {
     }
 
     public static Cell cell(BlockPos pos) { return new Cell(pos.getX(), pos.getY(), pos.getZ()); }
+
+    // ---- a workshop's fetching (D-0002) ---------------------------------------------------------
+
+    /** effects: how many of each item the post's storage holds, by item id. */
+    public static java.util.Map<String, Integer> counts(ServerLevel level, WorkPostBlockEntity post) {
+        var out = new java.util.HashMap<String, Integer>();
+        for (var pos : post.storage(level)) handler(level, pos).ifPresent(h -> {
+            for (int i = 0; i < h.getSlots(); i++) {
+                var s = h.getStackInSlot(i);
+                if (!s.isEmpty()) out.merge(RecipeBook.key(s.getItem()), s.getCount(), Integer::sum);
+            }
+        });
+        return out;
+    }
+
+    /** What to take out of one container. */
+    public record Take(BlockPos at, java.util.Map<String, Integer> items) {}
+
+    /** effects: where to take {@code want} from, the containers nearest the post first, each
+     * container visited once for everything it gives; empty when the storage does not hold it all. */
+    public static Optional<List<Take>> takes(ServerLevel level, WorkPostBlockEntity post, java.util.Map<String, Integer> want) {
+        var left = new java.util.LinkedHashMap<>(want);
+        left.values().removeIf(n -> n <= 0);
+        var out = new ArrayList<Take>();
+        for (var pos : post.storage(level)) {
+            if (left.isEmpty()) break;
+            var h = handler(level, pos);
+            if (h.isEmpty()) continue;
+            var here = new java.util.LinkedHashMap<String, Integer>();
+            for (int i = 0; i < h.get().getSlots(); i++) {
+                var s = h.get().getStackInSlot(i);
+                if (s.isEmpty()) continue;
+                var k = RecipeBook.key(s.getItem());
+                int need = left.getOrDefault(k, 0) - here.getOrDefault(k, 0);
+                if (need > 0) here.merge(k, Math.min(need, s.getCount()), Integer::sum);
+            }
+            if (here.isEmpty()) continue;
+            here.forEach((k, n) -> left.computeIfPresent(k, (kk, m) -> m - n > 0 ? m - n : null));
+            out.add(new Take(pos, here));
+        }
+        return left.isEmpty() ? Optional.of(out) : Optional.empty();
+    }
+
+    /** effects: takes {@code items} out of the container at {@code pos} into {@code into}; true iff
+     * all of them were there and fit, otherwise nothing is taken. */
+    public static boolean take(ServerLevel level, BlockPos pos, java.util.Map<String, Integer> items, SimpleContainer into) {
+        var h = handler(level, pos).orElse(null);
+        if (h == null) return false;
+        var taken = new ArrayList<ItemStack>();
+        for (var e : items.entrySet()) {
+            int left = e.getValue();
+            for (int i = 0; i < h.getSlots() && left > 0; i++) {
+                var s = h.getStackInSlot(i);
+                if (s.isEmpty() || !RecipeBook.key(s.getItem()).equals(e.getKey())) continue;
+                var got = h.extractItem(i, left, false);
+                left -= got.getCount();
+                if (!got.isEmpty()) taken.add(got);
+            }
+            if (left > 0) { putBack(h, taken); return false; }
+        }
+        if (!fits(into, taken)) { putBack(h, taken); return false; }
+        add(into, taken);
+        return true;
+    }
+
+    private static void putBack(IItemHandler h, List<ItemStack> stacks) {
+        for (var s : stacks) ItemHandlerHelper.insertItemStacked(h, s, false);
+    }
+
+    /** effects: the nearest storage holding a stack {@code wanted} accepts. */
+    public static Optional<BlockPos> holding(ServerLevel level, WorkPostBlockEntity post, java.util.function.Predicate<ItemStack> wanted) {
+        for (var pos : post.storage(level)) {
+            var h = handler(level, pos);
+            if (h.isEmpty()) continue;
+            for (int i = 0; i < h.get().getSlots(); i++) if (wanted.test(h.get().getStackInSlot(i))) return Optional.of(pos);
+        }
+        return Optional.empty();
+    }
+
+    /** effects: takes one stack {@code wanted} accepts out of the storage at {@code pos}, the most
+     * worn first; EMPTY when there is none. */
+    public static ItemStack takeOne(ServerLevel level, BlockPos pos, java.util.function.Predicate<ItemStack> wanted) {
+        var h = handler(level, pos).orElse(null);
+        if (h == null) return ItemStack.EMPTY;
+        int best = -1;
+        for (int i = 0; i < h.getSlots(); i++) {
+            var s = h.getStackInSlot(i);
+            if (wanted.test(s) && (best < 0 || s.getDamageValue() > h.getStackInSlot(best).getDamageValue())) best = i;
+        }
+        return best < 0 ? ItemStack.EMPTY : h.extractItem(best, 1, false);
+    }
 }

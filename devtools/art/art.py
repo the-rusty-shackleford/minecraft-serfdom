@@ -152,6 +152,23 @@ def icon_tool(img, ox):
         put(img, ox + 3 + i, 3 + i, "#c8322b")
 
 
+def icon_station(img, ox):
+    # An anvil, greyed, with a red stroke through it: no station to work at (D-0002).
+    for x in range(3, 13):
+        put(img, ox + x, 4, IRON[4])
+        put(img, ox + x, 5, IRON[3])
+    put(img, ox + 2, 5, IRON[3])
+    for x in range(6, 10):
+        for y in range(6, 9):
+            put(img, ox + x, y, IRON[2])
+    for x in range(4, 12):
+        put(img, ox + x, 9, IRON[3])
+        put(img, ox + x, 10, IRON[2])
+        put(img, ox + x, 11, IRON[1])
+    for i in range(10):
+        put(img, ox + 3 + i, 3 + i, "#c8322b")
+
+
 def icon_fuel(img, ox):
     # A flame over a lump of coal.
     for x, y in ((7, 4), (8, 5), (7, 5), (6, 6), (7, 6), (8, 6), (9, 6), (6, 7), (7, 7), (8, 7), (9, 7)):
@@ -192,7 +209,7 @@ def icon_chest_full(img, ox):
 
 def needs():
     """One 16x16 bubble per need, in the order Need declares them."""
-    icons = [icon_bed, icon_tool, icon_fuel, icon_materials, icon_chest_full]
+    icons = [icon_bed, icon_tool, icon_station, icon_fuel, icon_materials, icon_chest_full]
     sheet = canvas(16 * len(icons), 16)
     ground = bubble()
     for i, draw in enumerate(icons):

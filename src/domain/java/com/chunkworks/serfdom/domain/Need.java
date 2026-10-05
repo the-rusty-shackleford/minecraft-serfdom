@@ -8,7 +8,7 @@ import java.util.Optional;
  * when a worker lacks several things, the first declared is the one shown. Nothing shows when
  * nothing is lacking. */
 public enum Need {
-    NO_BED, NO_TOOL, NO_FUEL, NO_MATERIALS, CHEST_FULL;
+    NO_BED, NO_TOOL, NO_STATION, NO_FUEL, NO_MATERIALS, CHEST_FULL;
 
     /** effects: the need to show of {@code needs}, the first in declaration order; empty when there
      * are none. */

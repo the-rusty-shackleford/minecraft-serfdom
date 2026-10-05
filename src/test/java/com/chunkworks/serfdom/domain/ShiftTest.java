@@ -8,11 +8,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Partitions: the wind-down boundary (WIND_DOWN, WIND_DOWN + 1, 0) with and without cargo and
  * room; a full inventory with and without room; a tool needed and held, needed and stored, needed
- * and nowhere, not needed; precedence of full over tool. */
+ * and nowhere, not needed; precedence of full over tool; a tidy job (a workshop's, D-0002) carrying
+ * something, with and without room, before its tool, and carrying nothing. */
 final class ShiftTest {
     static final int MID = 3000;
     static Shift.Facts facts(int left, boolean carrying, boolean full, boolean needsTool, boolean holdsTool, boolean stored, boolean room) {
-        return new Shift.Facts(left, carrying, full, needsTool, holdsTool, stored, room);
+        return new Shift.Facts(left, carrying, full, needsTool, holdsTool, stored, room, false);
+    }
+    static Shift.Facts tidy(int left, boolean carrying, boolean needsTool, boolean holdsTool, boolean room) {
+        return new Shift.Facts(left, carrying, false, needsTool, holdsTool, true, room, true);
     }
 
     @Test void windingDownDepositsWhatIsCarried() {
@@ -47,5 +51,14 @@ final class ShiftTest {
         var plan = Shift.next(facts(MID, true, false, false, false, false, false));
         assertEquals(WORK, plan.step(), "a job without a tool never waits for one");
         assertEquals(Optional.empty(), plan.need());
+    }
+    @Test void aTidyJobPutsAwayWhatItCarriesFirst() {
+        assertEquals(DEPOSIT, Shift.next(tidy(MID, true, false, false, true)).step(), "a workshop keeps nothing between tasks");
+        var stuck = Shift.next(tidy(MID, true, false, false, false));
+        assertEquals(WAIT, stuck.step());
+        assertEquals(Optional.of(Need.CHEST_FULL), stuck.need());
+        assertEquals(DEPOSIT, Shift.next(tidy(MID, true, true, false, true)).step(), "before fetching its tool");
+        assertEquals(WORK, Shift.next(tidy(MID, false, false, false, false)).step(), "carrying nothing, it works");
+        assertEquals(WORK, Shift.next(facts(MID, true, false, false, false, false, true)).step(), "an untidy job keeps carrying");
     }
 }

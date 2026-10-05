@@ -116,15 +116,16 @@ public final class WorkShift extends Behavior<Villager> {
         boolean noSlot = true;
         for (int i = 0; i < carried.getContainerSize(); i++) if (carried.getItem(i).isEmpty()) { noSlot = false; break; }
         boolean isFull = full || noSlot;
+        boolean tidy = job.target() == JobScript.Target.WORKSHOP;
         int left = WorkDay.shiftLeft(level.getDayTime());
-        boolean wantsRoom = carrying && (isFull || left <= Shift.WIND_DOWN);
+        boolean wantsRoom = carrying && (isFull || tidy || left <= Shift.WIND_DOWN);
         boolean wantsTool = tag.isPresent() && !holds;
         var facts = new Shift.Facts(left, carrying, isFull, tag.isPresent(), holds,
                 wantsTool && Storage.toolAt(level, post, tag.get()).isPresent(),
-                wantsRoom && Storage.room(level, post, carried));
+                wantsRoom && Storage.room(level, post, carried), tidy);
         var next = Shift.next(facts);
         if (TRACE) LOG.info("Serfdom trace: {} at {} {} -> {}", worker.getId(), worker.blockPosition().toShortString(), facts, next);
-        Workers.shiftNeed(worker, next.need());
+        var need = next.need();
         switch (next.step()) {
             case DEPOSIT -> Storage.depositTarget(level, post, carried).ifPresentOrElse(
                     pos -> walkTo(pos, 2, now, () -> { Storage.depositAt(level, post, carried, pos); full = false; mode = Mode.PLAN; }),
@@ -142,13 +143,18 @@ public final class WorkShift extends Behavior<Villager> {
                     () -> waitFor(now));
             case WORK -> {
                 skipped.values().removeIf(until -> until <= now);
-                if (task == null) task = Jobs.code(job).find(level, worker, post, skipped::containsKey).orElse(null);
+                if (task == null) {
+                    var found = Jobs.code(job).find(level, worker, post, skipped::containsKey);
+                    task = found.task().orElse(null);
+                    if (task == null) need = found.need();
+                }
                 if (TRACE) LOG.info("Serfdom trace: {} target {}", worker.getId(), task == null ? "none" : task.key().toShortString());
-                if (task == null) { idle(worker, post, now); return; }
-                walkTo(task.stand(), task.reach(), now, () -> mode = Mode.WORK);
+                if (task == null) idle(worker, post, now);
+                else walkTo(task.stand(), task.reach(), now, () -> mode = Mode.WORK);
             }
             case WAIT, REST -> idle(worker, post, now);
         }
+        Workers.shiftNeed(worker, need);
     }
 
     private void work(ServerLevel level, Villager worker, JobScript job, long now) {
@@ -216,7 +222,7 @@ public final class WorkShift extends Behavior<Villager> {
     }
 
     /** effects: true iff the worker stands within {@code reach} + 1 of {@code pos} along the axes. */
-    private static boolean arrived(Villager worker, BlockPos pos, int reach) { return worker.blockPosition().distManhattan(pos) <= reach + 1; }
+    public static boolean arrived(Villager worker, BlockPos pos, int reach) { return worker.blockPosition().distManhattan(pos) <= reach + 1; }
 
     /** effects: waits by the post until asked again. */
     private void idle(Villager worker, WorkPostBlockEntity post, long now) {

@@ -115,6 +115,10 @@ dependencies {
     gametestRuntimeOnly farmersDelight
     // Backpacks+ on the gametest server only, so a fee is proven paid out of a real bag; never bundled.
     gametestRuntimeOnly files('../minecraft-backpacks-plus/build/libs/backpacksplus-0.7.0.jar')
+    // Ranged Weapons Mod 2.12.0 and Metals and Materials 1.0.3 (its steel) on the gametest server
+    // only, so a blacksmith is proven to make a rifle at the weapons workbench (D-0002); never bundled.
+    gametestRuntimeOnly files('../minecraft-ranged-weapons-mod/build/libs/rangedweaponsmod-2.12.0.jar')
+    gametestRuntimeOnly files('../minecraft-metals-and-materials/build/libs/metalsandmaterials-1.0.3.jar')
 }
 tasks.named('test', Test) { useJUnitPlatform() }
 jar { from sourceSets.domain.output }

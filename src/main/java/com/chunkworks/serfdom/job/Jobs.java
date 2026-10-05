@@ -28,9 +28,10 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.Item;
 import org.slf4j.Logger;
 
-/** The jobs data packs define, in {@code data/<namespace>/serfdom/job/<id>.json} (D-0001):
+/** The jobs data packs define, in {@code data/<namespace>/serfdom/job/<id>.json} (D-0001, D-0002):
  * <pre>{"tool": "minecraft:axes", "target": "tree", "radius": {"min": 4, "default": 16, "max": 32},
- *  "bonus": ["morevillagers:woodworker"], "bonus_fallback": ["minecraft:fletcher"]}</pre>
+ *  "bonus": ["morevillagers:woodworker"], "bonus_fallback": ["minecraft:fletcher"]}
+ *{"target": "workshop", "stations": ["table", "furnace"], "duties": ["charcoal"], ...}</pre>
  * A file that does not parse is left out and logged. Read on the server. */
 public final class Jobs extends SimpleJsonResourceReloadListener {
     private static final Logger LOG = LogUtils.getLogger();
@@ -43,13 +44,15 @@ public final class Jobs extends SimpleJsonResourceReloadListener {
                 Codec.INT.fieldOf("default").forGetter(RadiusData::standard),
                 Codec.INT.fieldOf("max").forGetter(RadiusData::max)).apply(i, RadiusData::new));
     }
-    private record Data(Optional<String> tool, String target, RadiusData radius, List<String> bonus, List<String> fallback) {
+    private record Data(Optional<String> tool, String target, RadiusData radius, List<String> bonus, List<String> fallback, List<String> stations, List<String> duties) {
         static final Codec<Data> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.optionalFieldOf("tool").forGetter(Data::tool),
                 Codec.STRING.fieldOf("target").forGetter(Data::target),
                 RadiusData.CODEC.fieldOf("radius").forGetter(Data::radius),
                 Codec.STRING.listOf().optionalFieldOf("bonus", List.of()).forGetter(Data::bonus),
-                Codec.STRING.listOf().optionalFieldOf("bonus_fallback", List.of()).forGetter(Data::fallback)).apply(i, Data::new));
+                Codec.STRING.listOf().optionalFieldOf("bonus_fallback", List.of()).forGetter(Data::fallback),
+                Codec.STRING.listOf().optionalFieldOf("stations", List.of()).forGetter(Data::stations),
+                Codec.STRING.listOf().optionalFieldOf("duties", List.of()).forGetter(Data::duties)).apply(i, Data::new));
     }
 
     public Jobs() { super(GSON, "serfdom/job"); }
@@ -60,9 +63,13 @@ public final class Jobs extends SimpleJsonResourceReloadListener {
             try {
                 var data = Data.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
                 var target = JobScript.Target.named(data.target()).orElseThrow(() -> new IllegalArgumentException("unknown target " + data.target()));
+                var stations = new HashSet<com.chunkworks.serfdom.domain.Station>();
+                for (var n : data.stations()) stations.add(com.chunkworks.serfdom.domain.Station.named(n).orElseThrow(() -> new IllegalArgumentException("unknown station " + n)));
+                var duties = new HashSet<com.chunkworks.serfdom.domain.Workshop.Duty>();
+                for (var n : data.duties()) duties.add(com.chunkworks.serfdom.domain.Workshop.Duty.named(n).orElseThrow(() -> new IllegalArgumentException("unknown duty " + n)));
                 out.put(id, new JobScript(id.toString(), data.tool(), target,
                         new Radius(data.radius().min(), data.radius().standard(), data.radius().max()),
-                        new HashSet<>(data.bonus()), new HashSet<>(data.fallback())));
+                        new HashSet<>(data.bonus()), new HashSet<>(data.fallback()), stations, duties));
             } catch (RuntimeException e) {
                 LOG.error("Serfdom: job {} left out: {}", id, e.getMessage());
             }
@@ -81,6 +88,7 @@ public final class Jobs extends SimpleJsonResourceReloadListener {
         return switch (job.target()) {
             case TREE -> Woodcutting.INSTANCE;
             case CROP -> Farming.INSTANCE;
+            case WORKSHOP -> WorkshopJob.INSTANCE;
         };
     }
 

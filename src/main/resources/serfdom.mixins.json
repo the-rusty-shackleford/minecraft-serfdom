@@ -3,7 +3,9 @@
   "minVersion": "0.8",
   "package": "com.chunkworks.serfdom.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["EntityMixin", "MobAccessor", "VillagerMixin"],
+  "mixins": ["EntityMixin", "FurnaceAccess", "MobAccessor", "SmithingAccess", "VillagerMixin"],
   "client": ["EntityRendererMixin"],
-  "injectors": {"defaultRequire": 1}
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

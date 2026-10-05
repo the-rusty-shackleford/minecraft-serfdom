@@ -40,6 +40,8 @@ final class SmallRulesTest {
         assertEquals(Optional.of(Need.CHEST_FULL), Need.shown(List.of(Need.CHEST_FULL)));
         assertEquals(Optional.of(Need.NO_BED), Need.shown(List.of(Need.CHEST_FULL, Need.NO_TOOL, Need.NO_BED)));
         assertEquals(Optional.of(Need.NO_TOOL), Need.shown(Set.of(Need.CHEST_FULL, Need.NO_TOOL)));
+        assertEquals(Optional.of(Need.NO_STATION), Need.shown(Set.of(Need.NO_MATERIALS, Need.NO_FUEL, Need.NO_STATION)), "no station before no fuel (D-0002)");
+        assertEquals(Optional.of(Need.NO_TOOL), Need.shown(Set.of(Need.NO_STATION, Need.NO_TOOL)));
     }
     @Test void needsTravelAsCodes() {
         assertEquals(0, Need.code(Optional.empty()));

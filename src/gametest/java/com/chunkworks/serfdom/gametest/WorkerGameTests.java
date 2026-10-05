@@ -55,16 +55,19 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * <li>the chain: on a worker and a free villager, breaking past ten blocks; vanilla's lead;</li>
  * <li>trades restocked at the post; a worker saved and loaded.</li>
  * </ul>
- * Tests that need an hour of the day have a batch of their own, set before it. */
+ * Tests that need an hour of the day have a batch of their own, set and held before it. */
 @GameTestHolder("serfdom") @PrefixGameTestTemplate(false)
 public final class WorkerGameTests {
     private static final int SETTLE = 5;
 
-    @BeforeBatch(batch = "night") public static void night(ServerLevel level) { level.setDayTime(WorkDay.SLEEP_START + 1000); }
-    @BeforeBatch(batch = "woodcutting") public static void woodcutting(ServerLevel level) { level.setDayTime(WorkDay.WORK_START + 500); }
-    @BeforeBatch(batch = "farming") public static void farming(ServerLevel level) { level.setDayTime(WorkDay.WORK_START + 500); }
-    @BeforeBatch(batch = "needs") public static void needs(ServerLevel level) { level.setDayTime(WorkDay.WORK_START + 500); }
-    @BeforeBatch(batch = "gates") public static void gates(ServerLevel level) { level.setDayTime(WorkDay.WORK_START + 500); }
+    /** The tests without an hour of their own run held in the morning's idle hours, not wherever the
+     * batch before them left the clock. */
+    @BeforeBatch(batch = "defaultBatch") public static void morning(ServerLevel level) { Yard.hour(level, WorkDay.WORK_START - 1500); }
+    @BeforeBatch(batch = "night") public static void night(ServerLevel level) { Yard.hour(level, WorkDay.SLEEP_START + 1000); }
+    @BeforeBatch(batch = "woodcutting") public static void woodcutting(ServerLevel level) { Yard.hour(level, WorkDay.WORK_START + 500); }
+    @BeforeBatch(batch = "farming") public static void farming(ServerLevel level) { Yard.hour(level, WorkDay.WORK_START + 500); }
+    @BeforeBatch(batch = "needs") public static void needs(ServerLevel level) { Yard.hour(level, WorkDay.WORK_START + 500); }
+    @BeforeBatch(batch = "gates") public static void gates(ServerLevel level) { Yard.hour(level, WorkDay.WORK_START + 500); }
 
     private static Schedule schedule(Villager v) { return v.getBrain().getSchedule(); }
     private static int emeralds(net.minecraft.server.level.ServerPlayer p) { return Carried.count(p, Items.EMERALD); }

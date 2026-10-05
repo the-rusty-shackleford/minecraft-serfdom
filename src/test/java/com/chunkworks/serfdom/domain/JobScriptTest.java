@@ -7,7 +7,8 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Partitions: target names in any case and unknown; bonus professions all present, some, none
- * with a fallback present, none with none; blank names; sets copied. */
+ * with a fallback present, none with none; blank names; sets copied; a workshop with stations and
+ * duties, one without stations, stations or duties on a tree or crop job (D-0002). */
 final class JobScriptTest {
     static JobScript woodcutting() {
         return new JobScript("serfdom:woodcutting", Optional.of("minecraft:axes"), JobScript.Target.TREE, new Radius(4, 16, 32),
@@ -42,5 +43,17 @@ final class JobScriptTest {
         names.add("minecraft:cleric");
         assertEquals(Set.of("minecraft:farmer"), job.bonus());
         assertThrows(UnsupportedOperationException.class, () -> job.bonus().add("x"));
+    }
+    @Test void onlyAWorkshopHasStationsAndDuties() {
+        var smith = new JobScript("serfdom:blacksmith", Optional.empty(), JobScript.Target.WORKSHOP, Radius.WORK, Set.of("minecraft:armorer"), Set.of(),
+                Set.of(Station.TABLE, Station.FURNACE), Set.of(Workshop.Duty.RAW_METAL));
+        assertEquals(Set.of(Station.TABLE, Station.FURNACE), smith.stations());
+        assertEquals(Optional.of(JobScript.Target.WORKSHOP), JobScript.Target.named("Workshop"));
+        assertThrows(IllegalArgumentException.class, () -> new JobScript("a", Optional.empty(), JobScript.Target.WORKSHOP, Radius.WORK, Set.of(), Set.of()));
+        assertThrows(IllegalArgumentException.class, () -> new JobScript("a", Optional.empty(), JobScript.Target.TREE, Radius.WORK, Set.of(), Set.of(), Set.of(Station.TABLE), Set.of()));
+        assertThrows(IllegalArgumentException.class, () -> new JobScript("a", Optional.empty(), JobScript.Target.CROP, Radius.WORK, Set.of(), Set.of(), Set.of(), Set.of(Workshop.Duty.REPAIR)));
+        assertEquals(Optional.of(Station.BLAST), Station.named("BLAST_FURNACE"));
+        assertEquals(Optional.of(Workshop.Duty.RAW_METAL), Workshop.Duty.named("raw_metal"));
+        assertEquals(Optional.empty(), Station.named("forge"));
     }
 }

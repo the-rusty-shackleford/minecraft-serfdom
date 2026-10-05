@@ -26,7 +26,7 @@ public final class Woodcutting implements Job {
     public static final Woodcutting INSTANCE = new Woodcutting();
     private Woodcutting() {}
 
-    @Override public Optional<Task> find(ServerLevel level, Villager worker, WorkPostBlockEntity post, Predicate<BlockPos> skip) {
+    @Override public Search find(ServerLevel level, Villager worker, WorkPostBlockEntity post, Predicate<BlockPos> skip) {
         var forest = new LevelForest(level);
         var p = post.getBlockPos();
         var centre = Storage.cell(p);
@@ -54,10 +54,10 @@ public final class Woodcutting implements Job {
         for (var base : bases) {
             if (seen.contains(base)) continue;
             var tree = Felling.tree(forest, base);
-            if (tree.isPresent()) return Optional.of(new WoodTask(tree.get()));
+            if (tree.isPresent()) return Search.of(Optional.of(new WoodTask(tree.get())));
             seen.add(base);
         }
-        return Optional.empty();
+        return Search.none();
     }
 
     static BlockPos pos(Cell c) { return new BlockPos(c.x(), c.y(), c.z()); }

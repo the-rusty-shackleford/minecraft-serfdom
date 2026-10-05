@@ -20,8 +20,9 @@ import net.minecraft.world.entity.npc.Villager;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
-/** The Worker Screen and the Work Post's screen (D-0001): what the server sends to show them, and
- * the buttons the client sends back. The screens are client code, handed each view through
+/** The Worker Screen and the Work Post's screen (D-0001, D-0002): what the server sends to show
+ * them, and the buttons the client sends back. A workshop post's view carries its stock list,
+ * each row with what is stocked and why it is stuck. The screens are client code, handed each view through
  * {@link Client}. Every action is checked again on the server: the player must own the worker or
  * the post and stand within reach. */
 public final class Screens {
@@ -58,21 +59,50 @@ public final class Screens {
         @Override public Type<WorkerAction> type() { return TYPE; }
     }
 
-    /** One job a post can take, with its radius bounds. */
-    public record JobChoice(ResourceLocation id, int min, int standard, int max) {
+    /** One job a post can take, with its radius bounds and, for a workshop, its stations' names. */
+    public record JobChoice(ResourceLocation id, int min, int standard, int max, List<String> stations) {
         static final StreamCodec<RegistryFriendlyByteBuf, JobChoice> CODEC = StreamCodec.composite(
                 ResourceLocation.STREAM_CODEC, JobChoice::id, ByteBufCodecs.VAR_INT, JobChoice::min,
-                ByteBufCodecs.VAR_INT, JobChoice::standard, ByteBufCodecs.VAR_INT, JobChoice::max, JobChoice::new);
+                ByteBufCodecs.VAR_INT, JobChoice::standard, ByteBufCodecs.VAR_INT, JobChoice::max,
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), JobChoice::stations, JobChoice::new);
+        public boolean workshop() { return !stations.isEmpty(); }
+    }
+
+    /** One row of a post's stock list: what it keeps, how many are stocked or on their way, its
+     * standing ({@link com.chunkworks.serfdom.domain.Workshop.Status}'s ordinal) and why. */
+    public record RowView(ResourceLocation item, int keep, int have, int status, Component detail) {
+        static final StreamCodec<RegistryFriendlyByteBuf, RowView> CODEC = StreamCodec.composite(
+                ResourceLocation.STREAM_CODEC, RowView::item, ByteBufCodecs.VAR_INT, RowView::keep, ByteBufCodecs.VAR_INT, RowView::have,
+                ByteBufCodecs.VAR_INT, RowView::status, ComponentSerialization.STREAM_CODEC, RowView::detail, RowView::new);
     }
 
     /** What the Work Post's screen shows. */
-    public record PostView(BlockPos pos, ResourceLocation job, List<JobChoice> jobs, int radius, boolean outline, List<String> workers) implements CustomPacketPayload {
+    public record PostView(BlockPos pos, ResourceLocation job, List<JobChoice> jobs, int radius, boolean outline, List<String> workers, List<RowView> rows) implements CustomPacketPayload {
         public static final Type<PostView> TYPE = new Type<>(Serfdom.id("post_view"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, PostView> CODEC = StreamCodec.composite(
-                BlockPos.STREAM_CODEC, PostView::pos, ResourceLocation.STREAM_CODEC, PostView::job,
-                JobChoice.CODEC.apply(ByteBufCodecs.list()), PostView::jobs, ByteBufCodecs.VAR_INT, PostView::radius,
-                ByteBufCodecs.BOOL, PostView::outline, ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), PostView::workers, PostView::new);
+        private static final StreamCodec<RegistryFriendlyByteBuf, List<JobChoice>> JOBS = JobChoice.CODEC.apply(ByteBufCodecs.list());
+        private static final StreamCodec<io.netty.buffer.ByteBuf, List<String>> NAMES = ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list());
+        private static final StreamCodec<RegistryFriendlyByteBuf, List<RowView>> ROWS = RowView.CODEC.apply(ByteBufCodecs.list());
+        public static final StreamCodec<RegistryFriendlyByteBuf, PostView> CODEC = StreamCodec.of((buf, v) -> {
+            BlockPos.STREAM_CODEC.encode(buf, v.pos);
+            ResourceLocation.STREAM_CODEC.encode(buf, v.job);
+            JOBS.encode(buf, v.jobs);
+            buf.writeVarInt(v.radius);
+            buf.writeBoolean(v.outline);
+            NAMES.encode(buf, v.workers);
+            ROWS.encode(buf, v.rows);
+        }, buf -> new PostView(BlockPos.STREAM_CODEC.decode(buf), ResourceLocation.STREAM_CODEC.decode(buf), JOBS.decode(buf),
+                buf.readVarInt(), buf.readBoolean(), NAMES.decode(buf), ROWS.decode(buf)));
         @Override public Type<PostView> type() { return TYPE; }
+    }
+
+    /** A change to the stock list: row {@code index} set to keep {@code keep} of {@code item}, added
+     * at the end when index is the list's size, removed when keep is 0. */
+    public record StockEdit(BlockPos pos, int index, ResourceLocation item, int keep) implements CustomPacketPayload {
+        public static final Type<StockEdit> TYPE = new Type<>(Serfdom.id("stock_edit"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, StockEdit> CODEC = StreamCodec.composite(
+                BlockPos.STREAM_CODEC, StockEdit::pos, ByteBufCodecs.VAR_INT, StockEdit::index, ResourceLocation.STREAM_CODEC, StockEdit::item,
+                ByteBufCodecs.VAR_INT, StockEdit::keep, StockEdit::new);
+        @Override public Type<StockEdit> type() { return TYPE; }
     }
 
     /** The post's settings as the screen leaves them. */
@@ -97,6 +127,7 @@ public final class Screens {
         registrar.playToClient(PostView.TYPE, PostView.CODEC, (v, ctx) -> Client.posts.accept(v));
         registrar.playToServer(WorkerAction.TYPE, WorkerAction.CODEC, (a, ctx) -> { if (ctx.player() instanceof ServerPlayer p) pressed(p, a); });
         registrar.playToServer(PostEdit.TYPE, PostEdit.CODEC, (e, ctx) -> { if (ctx.player() instanceof ServerPlayer p) edited(p, e); });
+        registrar.playToServer(StockEdit.TYPE, StockEdit.CODEC, (e, ctx) -> { if (ctx.player() instanceof ServerPlayer p) stocked(p, e); });
     }
 
     // ---- the worker -------------------------------------------------------------------------
@@ -146,16 +177,84 @@ public final class Screens {
     // ---- the post ---------------------------------------------------------------------------
 
     /** effects: shows {@code player} their post's screen. */
-    public static void openPost(ServerPlayer player, WorkPostBlockEntity post) {
-        var jobs = Jobs.ids().stream().map(id -> Jobs.get(id).orElseThrow()).map(j -> new JobChoice(ResourceLocation.parse(j.id()), j.radius().min(), j.radius().standard(), j.radius().max())).toList();
-        send(player, new PostView(post.getBlockPos(), post.job(), jobs, post.radius(), post.outline(), post.workerNames()));
+    public static void openPost(ServerPlayer player, WorkPostBlockEntity post) { send(player, postView(player.serverLevel(), post)); }
+
+    /** effects: what the post's screen shows now, its rows' standing worked out as a worker would. */
+    public static PostView postView(net.minecraft.server.level.ServerLevel level, WorkPostBlockEntity post) {
+        var jobs = Jobs.ids().stream().map(id -> Jobs.get(id).orElseThrow()).map(j -> new JobChoice(ResourceLocation.parse(j.id()), j.radius().min(), j.radius().standard(), j.radius().max(),
+                j.stations().stream().map(com.chunkworks.serfdom.domain.Station::named).sorted().toList())).toList();
+        var rows = new java.util.ArrayList<RowView>();
+        var job = Jobs.get(post.job());
+        if (job.isPresent() && job.get().target() == com.chunkworks.serfdom.domain.JobScript.Target.WORKSHOP && !post.stock().rows().isEmpty()) {
+            var read = com.chunkworks.serfdom.job.WorkshopJob.read(level, post, job.get(), java.util.Optional.empty(), p -> false);
+            var states = com.chunkworks.serfdom.domain.Workshop.rows(read.facts());
+            for (int i = 0; i < states.size(); i++) {
+                var row = post.stock().rows().get(i);
+                var st = states.get(i);
+                rows.add(new RowView(ResourceLocation.parse(row.item()), row.keep(), st.have(), st.status().ordinal(), detail(st)));
+            }
+        }
+        return new PostView(post.getBlockPos(), post.job(), jobs, post.radius(), post.outline(), post.workerNames(), rows);
+    }
+
+    /** effects: a row's standing in words: stocked, being made, what it is short of, the stations it
+     * needs, no fuel, a knife. */
+    static Component detail(com.chunkworks.serfdom.domain.Workshop.RowState st) {
+        return switch (st.status()) {
+            case MET -> Component.translatable("screen.serfdom.stock.met").withStyle(ChatFormatting.GREEN);
+            case MAKING -> Component.translatable("screen.serfdom.stock.making").withStyle(ChatFormatting.YELLOW);
+            case SHORT -> {
+                var list = Component.empty();
+                int shown = 0;
+                for (var s : st.shortages()) {
+                    if (shown == 3) { list.append(", …"); break; }
+                    if (shown++ > 0) list.append(", ");
+                    list.append(Component.translatable("screen.serfdom.stock.short_item", s.missing(),
+                            Component.translatable(com.chunkworks.serfdom.job.RecipeBook.item(s.options().get(0)).getDescriptionId())));
+                }
+                yield Component.translatable("screen.serfdom.stock.short", list).withStyle(ChatFormatting.RED);
+            }
+            case NO_STATION -> {
+                var list = Component.empty();
+                int i = 0;
+                for (var k : st.missing().stream().sorted().toList()) {
+                    if (i++ > 0) list.append(Component.translatable("screen.serfdom.stock.or"));
+                    list.append(Component.translatable("station.serfdom." + k.named()));
+                }
+                yield Component.translatable("screen.serfdom.stock.no_station", list).withStyle(ChatFormatting.RED);
+            }
+            case NO_FUEL -> Component.translatable("screen.serfdom.stock.no_fuel").withStyle(ChatFormatting.RED);
+            case NO_TOOL -> Component.translatable("screen.serfdom.stock.no_tool").withStyle(ChatFormatting.RED);
+        };
     }
 
     static void edited(ServerPlayer player, PostEdit edit) {
         if (player.blockPosition().distSqr(edit.pos()) > REACH * REACH) return;
         if (!(player.level().getBlockEntity(edit.pos()) instanceof WorkPostBlockEntity post) || !post.ownedBy(player.getUUID())) return;
         if (Jobs.get(edit.job()).isEmpty()) return;
+        boolean jobChanged = !edit.job().equals(post.job());
         post.setJob(edit.job(), edit.radius());
         post.setOutline(edit.outline());
+        if (jobChanged) send(player, postView(player.serverLevel(), post));
+    }
+
+    /** effects: changes the post's stock list as the screen asks, when the item is one its job's
+     * stations make, and shows the post again. */
+    static void stocked(ServerPlayer player, StockEdit edit) {
+        if (player.blockPosition().distSqr(edit.pos()) > REACH * REACH) return;
+        if (!(player.level().getBlockEntity(edit.pos()) instanceof WorkPostBlockEntity post) || !post.ownedBy(player.getUUID())) return;
+        var job = Jobs.get(post.job());
+        if (job.isEmpty() || job.get().target() != com.chunkworks.serfdom.domain.JobScript.Target.WORKSHOP) return;
+        var stock = post.stock();
+        int i = edit.index();
+        if (i < 0 || i > stock.rows().size() || edit.keep() < 0 || edit.keep() > com.chunkworks.serfdom.domain.Stock.MAX_KEEP) return;
+        if (edit.keep() == 0) {
+            if (i < stock.rows().size()) post.setStock(stock.without(i));
+        } else {
+            var item = edit.item().toString();
+            if (!com.chunkworks.serfdom.job.RecipeBook.rules(player.level(), job.get().stations()).results().contains(item)) return;
+            post.setStock(stock.with(i, new com.chunkworks.serfdom.domain.Stock.Row(item, edit.keep())));
+        }
+        send(player, postView(player.serverLevel(), post));
     }
 }

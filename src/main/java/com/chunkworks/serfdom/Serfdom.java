@@ -83,7 +83,7 @@ public final class Serfdom {
             if (e.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) e.accept(WORK_POST_ITEM);
             if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) e.accept(CHAIN_LEAD);
         });
-        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("1")));
+        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("2")));
         NeoForge.EVENT_BUS.addListener((AddReloadListenerEvent e) -> e.addListener(new Jobs()));
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> Hire.registerCommand(e.getDispatcher()));
         Hire.listen();

@@ -1,0 +1,7 @@
+{
+  "target": "workshop",
+  "stations": ["table", "furnace", "blast_furnace", "smithing", "anvil", "workbench"],
+  "duties": ["charcoal", "raw_metal", "repair"],
+  "radius": {"min": 4, "default": 8, "max": 16},
+  "bonus": ["minecraft:armorer", "minecraft:toolsmith", "minecraft:weaponsmith"]
+}

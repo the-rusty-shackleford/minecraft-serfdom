@@ -34,7 +34,7 @@ public final class Farming implements Job {
         return state.getBlock() instanceof CropBlock || state.getBlock() instanceof AttachedStemBlock || FarmersDelightCompat.crop(state);
     }
 
-    @Override public Optional<Task> find(ServerLevel level, Villager worker, WorkPostBlockEntity post, Predicate<BlockPos> skip) {
+    @Override public Search find(ServerLevel level, Villager worker, WorkPostBlockEntity post, Predicate<BlockPos> skip) {
         var p = post.getBlockPos();
         int r = post.radius();
         var centre = Storage.cell(p);
@@ -56,8 +56,8 @@ public final class Farming implements Job {
                     }
                 }
             }
-        if (found.isEmpty()) return Optional.empty();
-        return Optional.of(new CropTask(route(worker.blockPosition(), new ArrayList<>(found))));
+        if (found.isEmpty()) return Search.none();
+        return Search.of(Optional.of(new CropTask(route(worker.blockPosition(), new ArrayList<>(found)))));
     }
 
     /** effects: what to take for the crop block at {@code pos}: the crop itself when it is ripe on

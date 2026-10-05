@@ -31,8 +31,10 @@ public final class Shift {
      * @param needsTool whether its job takes a tool
      * @param holdsTool whether it holds one that serves the job
      * @param toolStored whether the post's chests hold one
-     * @param room whether something it carries has somewhere to go */
-    public record Facts(int shiftLeft, boolean carrying, boolean full, boolean needsTool, boolean holdsTool, boolean toolStored, boolean room) {}
+     * @param room whether something it carries has somewhere to go
+     * @param tidy whether its job keeps nothing between tasks (a workshop's, D-0002): what it
+     *     carries goes back to the chests before anything else */
+    public record Facts(int shiftLeft, boolean carrying, boolean full, boolean needsTool, boolean holdsTool, boolean toolStored, boolean room, boolean tidy) {}
 
     /** The choice, and the need it shows (only with WAIT). */
     public record Plan(Step step, Optional<Need> need) {
@@ -45,6 +47,7 @@ public final class Shift {
      * <li>in the last {@link #WIND_DOWN} ticks (or after): deposit what is carried, waiting with
      *     "chest full" if none of it fits; with nothing carried, rest;</li>
      * <li>with no free slot: deposit, or wait with "chest full";</li>
+     * <li>carrying anything in a tidy job: deposit, or wait with "chest full";</li>
      * <li>without the tool the job takes: fetch one, or wait with "no tool";</li>
      * <li>otherwise work.</li>
      * </ol> */
@@ -53,7 +56,7 @@ public final class Shift {
             if (!f.carrying()) return Plan.of(Step.REST);
             return f.room() ? Plan.of(Step.DEPOSIT) : Plan.waitFor(Need.CHEST_FULL);
         }
-        if (f.full()) return f.room() ? Plan.of(Step.DEPOSIT) : Plan.waitFor(Need.CHEST_FULL);
+        if (f.full() || (f.tidy() && f.carrying())) return f.room() ? Plan.of(Step.DEPOSIT) : Plan.waitFor(Need.CHEST_FULL);
         if (f.needsTool() && !f.holdsTool()) return f.toolStored() ? Plan.of(Step.FETCH_TOOL) : Plan.waitFor(Need.NO_TOOL);
         return Plan.of(Step.WORK);
     }

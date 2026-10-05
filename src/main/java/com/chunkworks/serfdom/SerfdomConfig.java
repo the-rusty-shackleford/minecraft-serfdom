@@ -3,7 +3,7 @@ package com.chunkworks.serfdom;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-/** The server's settings, in {@code config/serfdom-server.toml}. Defaults are D-0001's. */
+/** The server's settings, in {@code config/serfdom-server.toml}. Defaults are D-0001's and D-0002's. */
 public final class SerfdomConfig {
     private SerfdomConfig() {}
     private static final ModConfigSpec.Builder B = new ModConfigSpec.Builder();
@@ -22,6 +22,9 @@ public final class SerfdomConfig {
     public static final ModConfigSpec.IntValue LEAVES_PER_TICK = B
             .comment("Leaves a woodcutter clears each tick once a tree's logs are down.")
             .defineInRange("leaves_per_tick", 4, 1, 64);
+    public static final ModConfigSpec.IntValue CRAFT_TICKS = B
+            .comment("Ticks one craft, cut or repair at a workshop station takes a cook or a blacksmith (D-0002); a matching profession is 25% faster.")
+            .defineInRange("craft_ticks", 40, 1, 1200);
     public static final ModConfigSpec.BooleanValue WORKERS = B
             .comment("The workers module: hiring, beds, posts and jobs. Off: owned villagers live as free ones and nobody can hire.")
             .define("workers", true);

@@ -9,9 +9,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-/** The Work Post's screen (D-0001): the job, stepped through the jobs the server knows; the radius,
- * stepped within that job's bounds; the outline switch; and the workers on the post. Each change
- * is sent at once, so the outline shows the new area while the screen is open. */
+/** The Work Post's screen (D-0001, D-0002): the job, stepped through the jobs the server knows; the
+ * radius, stepped within that job's bounds; the outline switch; for a cook or a blacksmith, the
+ * way to its stock list; and the workers on the post. Each change is sent at once, so the outline
+ * shows the new area while the screen is open. */
 public final class PostScreen extends Screen {
     private static final int WIDTH = 236, PAD = 8, LINE = 11, ROW = 22, SMALL = 20;
     private static final int TITLE = 0xFFD37F, LABEL = 0xA0A0A0, TEXT = 0xE0E0E0;
@@ -29,7 +30,16 @@ public final class PostScreen extends Screen {
         for (int i = 0; i < view.jobs().size(); i++) if (view.jobs().get(i).id().equals(view.job())) job = i;
     }
 
-    public static void accept(Screens.PostView view) { Minecraft.getInstance().setScreen(new PostScreen(view)); }
+    /** effects: shows the view: refreshes the stock list or the picker already open on this post,
+     * otherwise opens the post's screen afresh. */
+    public static void accept(Screens.PostView view) {
+        var mc = Minecraft.getInstance();
+        if (mc.screen instanceof StockScreen stock && stock.pos().equals(view.pos())) { stock.refresh(view); return; }
+        if (mc.screen instanceof PickerScreen picker && picker.pos().equals(view.pos())) { picker.refresh(view); return; }
+        mc.setScreen(new PostScreen(view));
+    }
+
+    private boolean workshop() { return !view.jobs().isEmpty() && view.jobs().get(job).workshop() && view.jobs().get(job).id().equals(view.job()); }
 
     public Screens.PostView view() { return view; }
     public int radius() { return radius; }
@@ -37,7 +47,7 @@ public final class PostScreen extends Screen {
 
     @Override protected void init() {
         int workers = Math.max(1, view.workers().size());
-        height = PAD + LINE + 6 + 3 * ROW + LINE + workers * LINE + PAD;
+        height = PAD + LINE + 6 + (workshop() ? 4 : 3) * ROW + LINE + workers * LINE + PAD;
         left = (width - WIDTH) / 2;
         top = (super.height - height) / 2;
         int x = left + PAD + 64, y = top + PAD + LINE + 6;
@@ -50,6 +60,11 @@ public final class PostScreen extends Screen {
         outlineButton = addRenderableWidget(Button.builder(outlineText(), b -> { outline = !outline; b.setMessage(outlineText()); send(); })
                 .bounds(x, y, WIDTH - 2 * PAD - 64, SMALL).build());
         active();
+        if (workshop()) {
+            y += ROW;
+            addRenderableWidget(Button.builder(Component.translatable("screen.serfdom.stock", view.rows().size()), b -> minecraft.setScreen(new StockScreen(view)))
+                    .bounds(x, y, WIDTH - 2 * PAD - 64, SMALL).build());
+        }
     }
 
     private Component outlineText() { return Component.translatable(outline ? "screen.serfdom.outline.on" : "screen.serfdom.outline.off"); }
@@ -96,6 +111,7 @@ public final class PostScreen extends Screen {
         y += ROW;
         g.drawString(font, Component.translatable("screen.serfdom.outline"), left + PAD, y + 6, LABEL);
         y += ROW;
+        if (workshop()) { g.drawString(font, Component.translatable("screen.serfdom.stock.label"), left + PAD, y + 6, LABEL); y += ROW; }
         g.drawString(font, Component.translatable("screen.serfdom.workers", view.workers().size()), left + PAD, y, LABEL);
         y += LINE;
         if (view.workers().isEmpty()) g.drawString(font, Component.translatable("screen.serfdom.none"), left + PAD + 8, y, TEXT);
