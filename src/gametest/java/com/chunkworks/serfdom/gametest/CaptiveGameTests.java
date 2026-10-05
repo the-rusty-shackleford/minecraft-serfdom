@@ -277,7 +277,8 @@ public final class CaptiveGameTests {
 
     /** A capture a guard saw: Thief's heavy crime, a case with the hut's village, the captive owed to
      * it; the guard never sets on the taker. Paying the fine (15 of 20 emeralds) frees the captive
-     * where it stands, and the chain on it is not given back. */
+     * where it stands, and the chain on it is not given back; the chestplate its taker put on it, it
+     * keeps (D-0004). */
     @GameTest(template = "arena", timeoutTicks = 400, batch = "captives")
     public void aCaptureAGuardSawIsOwedToTheCaseAndPayingFreesItAndKeepsTheChain(GameTestHelper h) {
         var hut = Huts.plant(h, 0);
@@ -298,6 +299,7 @@ public final class CaptiveGameTests {
             h.assertTrue(Cases.openHere(taker).map(Object::toString).equals(Optional.of(village)), "a case with the hut's village");
             var owed = Remedies.get(h.getLevel().getServer()).ledger().owedTo(new Remedy.Case(taker.getUUID(), village));
             h.assertTrue(owed.contains(victim.getUUID()), "the captive is owed to it: " + owed);
+            EquipmentGameTests.dress(taker, victim, ItemStack.EMPTY, new ItemStack(Items.IRON_CHESTPLATE));
             h.assertTrue(Summons.use(taker, guard).isPresent(), "the guard serves the summons");
             Summons.answer(taker, new Summons.Answer(village, Summons.Choice.PAY));
             h.assertTrue(Carried.count(taker, Items.EMERALD) == 5, "the heavy fine of 15 is paid: " + Carried.count(taker, Items.EMERALD));
@@ -307,6 +309,8 @@ public final class CaptiveGameTests {
             h.assertTrue(Remedies.get(h.getLevel().getServer()).ledger().owed().keySet().stream().noneMatch(c -> c.player().equals(taker.getUUID())),
                     "nothing owed to the taker's cases now (the ledger is the server's, shared by every test)");
             h.assertTrue(victim.getAttributeValue(Attributes.MOVEMENT_SPEED) == victim.getAttributeBaseValue(Attributes.MOVEMENT_SPEED), "a free villager's pace");
+            h.assertTrue(victim.getItemBySlot(EquipmentSlot.CHEST).is(Items.IRON_CHESTPLATE), "freed by the law, it leaves wearing the chestplate (D-0004)");
+            h.assertTrue(EquipmentGameTests.dropChance(victim, EquipmentSlot.CHEST) > 1.0F, "still marked to drop whole");
         }).thenSucceed();
     }
 
@@ -509,8 +513,9 @@ public final class CaptiveGameTests {
         }).thenSucceed();
     }
 
-    /** A worker turned into a zombie villager, in chains, with an axe and logs: the axe, the logs
-     * and the chain drop, and the zombie villager is nobody's. */
+    /** A worker turned into a zombie villager, in chains, with an axe and logs, wearing a helmet and
+     * leggings: the axe, the logs, the chain and both pieces drop (the game would delete what it
+     * wore, D-0004), the zombie villager wears nothing and is nobody's. */
     @GameTest(template = "yard", timeoutTicks = 100, batch = "captives")
     public void aWorkerTurnedZombieDropsItsThings(GameTestHelper h) {
         Yard.floor(h);
@@ -521,6 +526,7 @@ public final class CaptiveGameTests {
             Workers.hire(level, worker, owner, Optional.empty());
             Workers.set(level, worker, Workers.of(worker).withTool(new ItemStack(Items.IRON_AXE)).withCuffs(true));
             worker.getInventory().addItem(new ItemStack(Items.OAK_LOG, 5));
+            EquipmentGameTests.dress(owner, worker, new ItemStack(Items.IRON_HELMET), ItemStack.EMPTY, new ItemStack(Items.CHAINMAIL_LEGGINGS));
             var where = worker.blockPosition();
             var zombie = worker.convertTo(EntityType.ZOMBIE_VILLAGER, false);
             h.assertTrue(zombie != null, "converted");
@@ -529,12 +535,16 @@ public final class CaptiveGameTests {
             h.assertTrue(drops.stream().filter(e -> e.getItem().is(Items.IRON_AXE)).count() == 1, "the axe: " + drops);
             h.assertTrue(drops.stream().filter(e -> e.getItem().is(Items.OAK_LOG)).mapToInt(e -> e.getItem().getCount()).sum() == 5, "the logs: " + drops);
             h.assertTrue(drops.stream().filter(e -> e.getItem().is(Serfdom.CHAIN_LEAD.get())).count() == 1, "the chain: " + drops);
+            h.assertTrue(drops.stream().filter(e -> e.getItem().is(Items.IRON_HELMET)).count() == 1, "the helmet: " + drops);
+            h.assertTrue(drops.stream().filter(e -> e.getItem().is(Items.CHAINMAIL_LEGGINGS)).count() == 1, "the leggings: " + drops);
+            for (var slot : com.chunkworks.serfdom.WorkerMenu.WORN) h.assertTrue(zombie.getItemBySlot(slot).isEmpty(), "the zombie villager wears nothing on its " + slot);
             h.assertTrue(zombie.getExistingData(Serfdom.WORKER).isEmpty(), "the zombie villager is nobody's");
         }).thenSucceed();
     }
 
     /** Set free from the Worker Screen: a captive in chains goes free, its owner's chain comes back
-     * to them, and it walks at a free villager's pace. */
+     * to them, it walks at a free villager's pace, and it takes off its helmet and boots and drops
+     * them where it stands (D-0004). */
     @GameTest(template = "yard", timeoutTicks = 100, batch = "captives")
     public void settingACaptiveFreeLetsItGoAndGivesTheOwnersChainBack(GameTestHelper h) {
         Yard.floor(h);
@@ -544,10 +554,14 @@ public final class CaptiveGameTests {
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> {
             Workers.capture(level, captive, owner, chains(1));
             h.assertTrue(carried(owner) == 0, "the chain is on the captive");
+            EquipmentGameTests.dress(owner, captive, new ItemStack(Items.GOLDEN_HELMET), ItemStack.EMPTY, ItemStack.EMPTY, new ItemStack(Items.LEATHER_BOOTS));
             Screens.pressed(owner, new Screens.WorkerAction(captive.getId(), Screens.WorkerButton.SET_FREE));
             h.assertFalse(Workers.of(captive).owned() || captive.isLeashed() || Workers.cuffed(captive), "free, chains off");
             h.assertTrue(carried(owner) == 1, "the owner's chain is back");
             h.assertTrue(captive.getAttributeValue(Attributes.MOVEMENT_SPEED) == captive.getAttributeBaseValue(Attributes.MOVEMENT_SPEED), "a free villager's pace");
+            for (var slot : com.chunkworks.serfdom.WorkerMenu.WORN) h.assertTrue(captive.getItemBySlot(slot).isEmpty(), "it wears nothing on its " + slot);
+            var drops = EquipmentGameTests.dropsNear(h, captive);
+            h.assertTrue(EquipmentGameTests.count(drops, Items.GOLDEN_HELMET) == 1 && EquipmentGameTests.count(drops, Items.LEATHER_BOOTS) == 1, "the helmet and boots lie where it stood: " + drops);
         }).thenSucceed();
     }
 
@@ -593,8 +607,9 @@ public final class CaptiveGameTests {
     }
 
     /** At midnight, with the escape certain: two captives asleep in their beds roll, get up when the
-     * roll said and walk home. One reaches the village it was taken from and is free; the other is
-     * cuffed by a passer on the way, which ends its escape, and stays a captive. */
+     * roll said and walk home. One reaches the village it was taken from and is free, still wearing
+     * the helmet its owner gave it, still marked to drop whole (D-0004); the other is cuffed by a
+     * passer on the way, which ends its escape, and stays a captive. */
     @GameTest(template = "yard", timeoutTicks = 2400, batch = "midnight")
     public void aCaptiveSlipsHomeAtNightAndAChainOnTheWayEndsIt(GameTestHelper h) {
         Yard.floor(h);
@@ -622,6 +637,7 @@ public final class CaptiveGameTests {
                 h.assertTrue(Workers.assignBed(level, v, bed) == Workers.Picked.OK, "a bed");
                 v.startSleeping(bed);
             }
+            EquipmentGameTests.dress(owner, runner, new ItemStack(Items.IRON_HELMET));
         }).thenWaitUntil(() -> {
             for (var v : List.of(runner, caught)) h.assertTrue(Workers.of(v).night().getUpAt().isPresent(), "it rolled and means to go");
         }).thenExecute(() -> level.setDayTime(Math.floorDiv(level.getDayTime(), 24000L) * 24000L + 19999))
@@ -637,6 +653,8 @@ public final class CaptiveGameTests {
                 }).thenWaitUntil(() -> h.assertFalse(Workers.of(runner).owned(), "the runner is home and free"))
                 .thenExecute(() -> {
                     h.assertTrue(home.coversColumn(Worker.spot(GlobalPos.of(level.dimension(), lastTaken[0]))), "freed inside its village: " + lastTaken[0]);
+                    h.assertTrue(runner.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET), "it escaped wearing the helmet");
+                    h.assertTrue(EquipmentGameTests.dropChance(runner, EquipmentSlot.HEAD) > 1.0F, "still marked to drop whole");
                     h.assertTrue(Workers.of(caught).ownedBy(owner.getUUID()) && Workers.of(caught).captive(), "the caught one is still the owner's captive");
                     SerfdomConfig.ESCAPE_CHANCE.set(chance);
                 }).thenSucceed();

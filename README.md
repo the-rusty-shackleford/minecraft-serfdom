@@ -7,10 +7,9 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.3.0: phase 1 (woodcutting and farming, cooking and the blacksmith) and phase 2a, the
-capture (D-0003). The rest of the plan:
+This is 0.4.0: phase 1 (woodcutting and farming, cooking and the blacksmith), phase 2a, the
+capture (D-0003), and phase 2b, what a worker wears (D-0004). The rest of the plan:
 
-- **2b:** equipment slots and armour drawn on villagers.
 - **3:** hunger and cooking meals.
 - **4:** wallets, trade between villagers, and the For Sale block.
 - **5:** raids and defending the base.
@@ -28,9 +27,12 @@ capture (D-0003). The rest of the plan:
 2. **Bring it home.** A hired villager without a bed follows you on foot. For a long trip, put it
    in the **chain lead** (a lead and a chain, shapeless). See [The chain](#the-chain).
 3. **The Worker Screen.** Sneak and right-click your worker. It shows:
+   - the worker, beside its head, chest, legs and feet slots (see
+     [What a worker wears](#what-a-worker-wears));
    - its profession and level;
    - its bed and its job;
-   - what it needs, if anything.
+   - what it needs, if anything;
+   - your inventory below.
 
    It has four buttons:
    - **Assign bed:** then right-click a free bed within 30 seconds. The worker sleeps there from
@@ -40,7 +42,8 @@ capture (D-0003). The rest of the plan:
      until the worker has a bed.
    - **Clear job:** the worker goes back to an ordinary villager's day at your base.
    - **Set free** (click it twice): the worker is free again and walks to the nearest village. A
-     chain on it comes back to you; the tool it keeps drops where it stands.
+     chain on it comes back to you; the tool it keeps, and everything it wears, drop where it
+     stands.
 
    A plain right-click still opens its trades (not in chains). Its trades restock at its post, at most twice a
    day, as a villager's do at its workstation.
@@ -123,6 +126,38 @@ Vanilla Wheels' trailer carries captives as it carries animals:
 - They ride in chains with nobody holding them.
 - To let everyone out, crouch and right-click the open doors with a **lead or a chain** in hand.
   They step out behind, still in chains: take their chains to lead them on.
+
+### What a worker wears
+
+Dress any worker of yours (hired, captive, in chains, or a child) in the Worker Screen's four
+slots. Click a piece on, or shift-click it from your inventory into its slot.
+
+- **What fits.** A slot takes whatever you could wear there yourself: armour, a turtle shell, a
+  carved pumpkin, a mob head, an elytra, and Lucky's Wardrobe's clothes.
+- **Protection.** It protects as on you: armour points, toughness, knockback resistance and
+  enchantments.
+- **Wear.** Armour wears out as yours does. Each hit takes durability off every piece, and a
+  falling block wears the helmet. A worn-out piece breaks off, and nothing replaces it until you
+  put another on. Workers never dress themselves. Unbreakable pieces and Lucky's Wardrobe's clothes
+  never wear.
+- **Curse of Binding** keeps a piece on, as on you, except in creative.
+- **Only you.** Only the owner can open the screen, within eight blocks. If the worker dies, goes
+  free or is led away while the screen is open, nothing more can be taken through it.
+- **How it looks.** Anything on its legs takes the villager's robe off, so leggings and trousers
+  show. A chestplate alone goes over the robe. Anything on its head hides its trade's hat.
+- **Any villager.** Armour shows on every villager, so a piece a dispenser put on a free villager
+  shows too.
+
+When a worker stops being yours:
+
+| How | What it wore |
+|---|---|
+| It dies, or turns into a zombie villager | Drops with its other things. A piece with Curse of Vanishing is gone. |
+| You set it free | It takes everything off and drops it where it stands. |
+| It escapes, or the law frees it | It leaves wearing it. |
+
+A piece put on through the screen always drops whole when the villager dies, whoever it belongs
+to by then. Catch the escapee again, or kill it, to get your gear back.
 
 ### Children
 
@@ -236,7 +271,7 @@ Hired workers can summon iron golems as other villagers do: it takes five that h
 last day gossiping together, or three panicking at a zombie. Captives never do (Rusty's call).
 
 A worker that dies, or is turned into a zombie villager, drops the tool it keeps, everything it
-carries and the chain on it. A cured one is a free villager.
+carries, everything it wears and the chain on it. A cured one is a free villager.
 
 ## Server settings
 
@@ -344,6 +379,25 @@ workshop's stations. The fuel a worker may burn is the item tag `#serfdom:fuel`.
 - **The trailer**: `compat/WheelsCompat` registers a cargo rule with Vanilla Wheels 1.11
   (`api/CargoRules`, its D-0029): a villager in chains rides as cargo and loads while its chain's
   holder clicks.
+- **The wearing slots** (D-0004):
+  - `WorkerMenu` is a menu over the villager's own four armour slots and the player's inventory,
+    so what it wears is vanilla's armour.
+  - The rules are pure: `domain/Wardrobe` (who, what fits, Binding, shift-clicks) and
+    `domain/Parting` (gear on each way out).
+  - The server asks whether the menu may still be used on every click and tick.
+  - The menu opens with vanilla's packet, and the view payload binds the client's menu right after.
+  - A piece put on gets drop chance 2.0, vanilla's mark for "always drops whole".
+  - `mixin/VillagerWearMixin` gives every villager a player's `hurtArmor` and `hurtHelmet`.
+- **The armour layer** (`client/VillagerArmourLayer`):
+  - Vanilla's `HumanoidArmorLayer` draws on a stand-in player model posed from the villager's
+    model each frame, by `domain/Fit`: the helmet lifted 2 pixels about the head's own pivot (and
+    grown with Guard Villagers' big child heads), the chest 1.32× deeper, and sleeves at 0.7 on the
+    crossed upper arms.
+  - The fit is only in poses and scales, which is all NeoForge passes to a mod's own armour model,
+    so Lucky's Wardrobe's clothes fit as armour does.
+  - `client/Dress`, with a mixin after the profession layer, hides the robe under leggings and the
+    hat under anything on the head.
+  - An elytra hangs 1.5 pixels farther back.
 
 Village Deed, Farmer's Delight, Ranged Weapons Mod, Thief, Village Law 1.1+ and Vanilla Wheels
 1.11+ are optional: without them there are no bought villages; no tomatoes, rice, pot, stove or
@@ -363,8 +417,10 @@ This runs the JUnit domain tests, the GameTests and the photo booth.
 - The gametest server runs Village Deed from the sibling repo's `build/libs/villagedeed-2.2.0.jar`,
   Backpacks+ from `../minecraft-backpacks-plus/build/libs/backpacksplus-0.7.0.jar`, Ranged Weapons
   Mod 2.12.0, Metals and Materials 1.0.3, Village Law 1.1.0, Vanilla Wheels 1.11.0 and Trailer
-  2.4.0 from their repos' `build/libs` (build those first), and Thief, Guard Villagers and
-  Farmer's Delight from Modrinth's maven.
+  2.4.0 from their repos' `build/libs` (build those first), and Thief, Guard Villagers,
+  Farmer's Delight and Lucky's Wardrobe from Modrinth's maven.
+- The booth also loads Curios, which Lucky's Wardrobe's client needs, from its own `run/booth/mods`
+  folder (`prepareBoothMods`). On the gametest server it would send payloads to the mock players.
 - The booth needs a display: the Xephyr recipe in the workspace's `AGENTS.local.md`. Without one,
   add `-PskipBooth`.
 - The GameTests log every worker's plan with `-Dserfdom.trace=true`, which the gametest run sets.

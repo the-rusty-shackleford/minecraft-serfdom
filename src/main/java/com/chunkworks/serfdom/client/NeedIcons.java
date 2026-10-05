@@ -12,7 +12,8 @@ import net.minecraft.world.entity.npc.Villager;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
 
 /** A worker's need as a small icon over its head (D-0001), only when it lacks something and only
- * close up: within {@link #RANGE} blocks of the camera. The icons are one sheet,
+ * close up: within {@link #RANGE} blocks of the camera, and never over its portrait on the Worker
+ * Screen, whose details say it. The icons are one sheet,
  * {@code textures/gui/needs.png}, one 16-pixel square per {@link Need} in declaration order. */
 public final class NeedIcons {
     static final double RANGE = 8.0;
@@ -21,7 +22,7 @@ public final class NeedIcons {
     private NeedIcons() {}
 
     static void render(RenderLivingEvent.Post<?, ?> event) {
-        if (!(event.getEntity() instanceof Villager villager) || villager.isInvisible()) return;
+        if (!(event.getEntity() instanceof Villager villager) || villager.isInvisible() || WorkerScreen.drawingPortrait()) return;
         var need = Workers.shownNeed(villager);
         if (need.isEmpty()) return;
         var dispatcher = net.minecraft.client.Minecraft.getInstance().getEntityRenderDispatcher();

@@ -44,7 +44,7 @@ public final class RunHome extends Behavior<Villager> {
         if (Escape.home(here, worker.home(), worker.takenSpot().get())) {
             var owner = worker.owner().map(u -> level.getServer().getPlayerList().getPlayer(u)).orElse(null);
             if (owner != null) owner.sendSystemMessage(Component.translatable("message.serfdom.escaped", Workers.name(villager)).withStyle(ChatFormatting.RED));
-            Workers.free(level, villager);
+            Workers.free(level, villager, com.chunkworks.serfdom.domain.Parting.Way.ESCAPES);
             return;
         }
         var goal = Escape.goal(worker.home(), worker.takenSpot().get());

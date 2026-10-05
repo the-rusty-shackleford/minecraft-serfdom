@@ -35,8 +35,9 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 /** Composition root (D-0001): the Work Post and the chain lead, a worker's saved state and its
- * synced need, the record of placed logs, a worker's two activities, the server config, the job
- * data, and the events that hire, assign, link and keep the post's storage index. */
+ * synced need, the record of placed logs, a worker's activities, the Worker Screen's menu, the
+ * server config, the job data, and the events that hire, assign, link and keep the post's storage
+ * index. */
 @Mod(Serfdom.ID)
 public final class Serfdom {
     public static final String ID = "serfdom";
@@ -46,6 +47,7 @@ public final class Serfdom {
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS = DeferredRegister.create(NeoForgeRegistries.Keys.ATTACHMENT_TYPES, ID);
     private static final DeferredRegister<Activity> ACTIVITIES = DeferredRegister.create(Registries.ACTIVITY, ID);
     private static final DeferredRegister<net.minecraft.sounds.SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, ID);
+    private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, ID);
 
     public static final DeferredBlock<WorkPostBlock> WORK_POST = BLOCKS.registerBlock("work_post", WorkPostBlock::new,
             BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0F).sound(SoundType.WOOD).ignitedByLava().noOcclusion());
@@ -86,6 +88,10 @@ public final class Serfdom {
     public static final DeferredHolder<net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundEvent> HUM = SOUNDS.register("captive.hum",
             () -> net.minecraft.sounds.SoundEvent.createFixedRangeEvent(id("captive.hum"), 8.0F));
 
+    /** The Worker Screen's menu: the worker's four armour slots over the player's inventory (D-0004). */
+    public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<WorkerMenu>> WORKER_MENU = MENUS.register("worker",
+            () -> new net.minecraft.world.inventory.MenuType<>(WorkerMenu::new, net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
+
     public static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(ID, path); }
 
     /** requires: the mod bus and container; effects: registers content, config and listeners. */
@@ -96,12 +102,13 @@ public final class Serfdom {
         ATTACHMENTS.register(bus);
         ACTIVITIES.register(bus);
         SOUNDS.register(bus);
+        MENUS.register(bus);
         container.registerConfig(ModConfig.Type.SERVER, SerfdomConfig.SPEC);
         bus.addListener((BuildCreativeModeTabContentsEvent e) -> {
             if (e.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) e.accept(WORK_POST_ITEM);
             if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) e.accept(CHAIN_LEAD);
         });
-        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("3")));
+        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("4")));
         NeoForge.EVENT_BUS.addListener((AddReloadListenerEvent e) -> e.addListener(new Jobs()));
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> Hire.registerCommand(e.getDispatcher()));
         Hire.listen();

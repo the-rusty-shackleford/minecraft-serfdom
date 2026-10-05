@@ -10,10 +10,12 @@
     "MobAccessor",
     "SmithingAccess",
     "VillagerMakeLoveMixin",
-    "VillagerMixin"
+    "VillagerMixin",
+    "VillagerWearMixin"
   ],
   "client": [
-    "EntityRendererMixin"
+    "EntityRendererMixin",
+    "VillagerModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

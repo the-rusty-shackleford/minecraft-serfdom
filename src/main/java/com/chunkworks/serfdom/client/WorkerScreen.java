@@ -2,46 +2,71 @@
 package com.chunkworks.serfdom.client;
 
 import com.chunkworks.serfdom.Screens;
+import com.chunkworks.serfdom.WorkerMenu;
 import com.chunkworks.serfdom.domain.Need;
+import com.chunkworks.serfdom.domain.WorkerLayout;
+import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-/** The Worker Screen (D-0001, D-0003): a plain panel with the worker's profession and level, its
- * status (hired, captive, in chains, escaping, a child), bed, job and need, and four buttons. Assign
- * job is greyed until the worker has a bed, and for a child; Clear job until it has a job. Assign
- * bed and Assign job close the screen so the player can click the bed or the post. Set free asks
- * again before it lets the worker go. */
-public final class WorkerScreen extends Screen {
-    private static final int WIDTH = 236, PAD = 8, LINE = 11, BUTTON_W = 70, BUTTON_H = 20;
+/** The Worker Screen (D-0001, D-0003, D-0004): the worker drawn beside its four wearing slots, its
+ * profession and level, its status (hired, captive, in chains, escaping, a child), bed, job and
+ * need, four buttons, and the player's inventory below, laid out as {@link WorkerLayout} says. The
+ * menu opens first and the view follows it; until the view comes only the slots show. Assign job is
+ * greyed until the worker has a bed, and for a child; Clear job until it has a job. Assign bed and
+ * Assign job close the screen so the player can click the bed or the post. Set free asks again
+ * before it lets the worker go. */
+public final class WorkerScreen extends AbstractContainerScreen<WorkerMenu> {
     private static final int TITLE = 0xFFD37F, LABEL = 0xA0A0A0, TEXT = 0xE0E0E0, NEED = 0xFF7F7F, CAPTIVE = 0xD8A060;
-    private final Screens.WorkerView view;
-    private int left, top, height;
+    private static final int SLOT_DARK = 0xFF373737, SLOT_LIGHT = 0xFFFFFFFF, SLOT_FILL = 0xFF8B8B8B;
+    /** True while the portrait is drawn, so the worker's need icon is not drawn over it. */
+    private static boolean portrait;
+    @Nullable private Screens.WorkerView view;
     private Button bed, job, clear, free;
     private boolean sure;
 
-    public WorkerScreen(Screens.WorkerView view) {
-        super(view.name());
-        this.view = view;
+    public WorkerScreen(WorkerMenu menu, Inventory inventory, Component title) {
+        super(menu, inventory, title);
+        imageWidth = WorkerLayout.WIDTH;
+        imageHeight = WorkerLayout.HEIGHT;
+        titleLabelX = WorkerLayout.PAD;
+        titleLabelY = WorkerLayout.PAD;
+        inventoryLabelX = WorkerLayout.INVENTORY_X - 1;
+        inventoryLabelY = WorkerLayout.INVENTORY_LABEL_Y;
     }
 
-    /** effects: shows the view, replacing an open Worker Screen. */
-    public static void accept(Screens.WorkerView view) { Minecraft.getInstance().setScreen(new WorkerScreen(view)); }
+    /** effects: shows the view on the open Worker Screen, binding its menu to the villager it names. */
+    public static void accept(Screens.WorkerView view) {
+        if (Minecraft.getInstance().screen instanceof WorkerScreen screen) screen.show(view);
+    }
 
-    public Screens.WorkerView view() { return view; }
+    /** effects: whether a worker's portrait is being drawn now. */
+    public static boolean drawingPortrait() { return portrait; }
+
+    private void show(Screens.WorkerView v) {
+        view = v;
+        if (minecraft != null && minecraft.level != null && minecraft.level.getEntity(v.entity()) instanceof Villager villager) menu.bind(villager);
+        sure = false;
+        rebuildWidgets();
+    }
+
+    @Nullable public Screens.WorkerView view() { return view; }
     public Button bedButton() { return bed; }
     public Button jobButton() { return job; }
     public Button clearButton() { return clear; }
     public Button freeButton() { return free; }
 
     @Override protected void init() {
-        height = PAD + LINE + 4 + 5 * LINE + 6 + BUTTON_H + 4 + BUTTON_H + PAD;
-        left = (width - WIDTH) / 2;
-        top = (super.height - height) / 2;
-        int y = top + height - PAD - 2 * BUTTON_H - 4;
+        super.init();
+        if (view == null) return;
+        var f = WorkerLayout.free();
         free = addRenderableWidget(Button.builder(Component.translatable("screen.serfdom.set_free"), b -> {
                     if (!sure) {
                         sure = true;
@@ -49,50 +74,80 @@ public final class WorkerScreen extends Screen {
                         return;
                     }
                     press(Screens.WorkerButton.SET_FREE, true);
-                }).bounds(left + WIDTH - PAD - BUTTON_W, y + BUTTON_H + 4, BUTTON_W, BUTTON_H).build());
-        int gap = (WIDTH - 2 * PAD - 3 * BUTTON_W) / 2;
-        bed = addRenderableWidget(Button.builder(Component.translatable("screen.serfdom.assign_bed"), b -> press(Screens.WorkerButton.ASSIGN_BED, true))
-                .bounds(left + PAD, y, BUTTON_W, BUTTON_H).build());
-        job = addRenderableWidget(Button.builder(Component.translatable("screen.serfdom.assign_job"), b -> press(Screens.WorkerButton.ASSIGN_JOB, true))
-                .bounds(left + PAD + BUTTON_W + gap, y, BUTTON_W, BUTTON_H).build());
-        clear = addRenderableWidget(Button.builder(Component.translatable("screen.serfdom.clear_job"), b -> press(Screens.WorkerButton.CLEAR_JOB, false))
-                .bounds(left + PAD + 2 * (BUTTON_W + gap), y, BUTTON_W, BUTTON_H).build());
+                }).bounds(leftPos + f.x(), topPos + f.y(), f.w(), f.h()).build());
+        bed = addRenderableWidget(button(0, "screen.serfdom.assign_bed", Screens.WorkerButton.ASSIGN_BED, true));
+        job = addRenderableWidget(button(1, "screen.serfdom.assign_job", Screens.WorkerButton.ASSIGN_JOB, true));
+        clear = addRenderableWidget(button(2, "screen.serfdom.clear_job", Screens.WorkerButton.CLEAR_JOB, false));
         job.active = view.hasBed() && view.status() != Screens.Status.CHILD;
         clear.active = view.hasPost();
     }
 
+    private Button button(int index, String label, Screens.WorkerButton which, boolean close) {
+        var r = WorkerLayout.button(index);
+        return Button.builder(Component.translatable(label), b -> press(which, close)).bounds(leftPos + r.x(), topPos + r.y(), r.w(), r.h()).build();
+    }
+
     private void press(Screens.WorkerButton button, boolean close) {
+        if (view == null) return;
         PacketDistributor.sendToServer(new Screens.WorkerAction(view.entity(), button));
         if (close) onClose();
     }
 
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         super.render(g, mouseX, mouseY, partialTick);
-        int y = top + PAD;
-        g.drawString(font, view.name(), left + PAD, y, TITLE);
-        y += LINE + 4;
+        renderTooltip(g, mouseX, mouseY);
+    }
+
+    /** effects: the panel, every slot's frame, the portrait's frame and the worker in it. */
+    @Override protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+        g.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xE0101010);
+        g.renderOutline(leftPos, topPos, imageWidth, imageHeight, 0xFF505050);
+        for (var slot : menu.slots) frame(g, leftPos + slot.x - 1, topPos + slot.y - 1);
+        var p = WorkerLayout.PORTRAIT;
+        int x0 = leftPos + p.x(), y0 = topPos + p.y();
+        g.fill(x0, y0, x0 + p.w(), y0 + p.h(), 0xFF000000);
+        g.renderOutline(x0 - 1, y0 - 1, p.w() + 2, p.h() + 2, 0xFF505050);
+        var villager = menu.villager();
+        if (villager != null) {
+            portrait = true;
+            try {
+                InventoryScreen.renderEntityInInventoryFollowsMouse(g, x0, y0, x0 + p.w(), y0 + p.h(), 28, 0.0625F, mouseX, mouseY, villager);
+            } finally {
+                portrait = false;
+            }
+        }
+    }
+
+    private static void frame(GuiGraphics g, int x, int y) {
+        int s = WorkerLayout.SLOT;
+        g.fill(x, y, x + s, y + s, SLOT_FILL);
+        g.fill(x, y, x + s - 1, y + 1, SLOT_DARK);
+        g.fill(x, y, x + 1, y + s - 1, SLOT_DARK);
+        g.fill(x + 1, y + s - 1, x + s, y + s, SLOT_LIGHT);
+        g.fill(x + s - 1, y + 1, x + s, y + s, SLOT_LIGHT);
+    }
+
+    /** effects: the name, the details' rows and the inventory's label, in the panel's frame. */
+    @Override protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
+        g.drawString(font, title, titleLabelX, titleLabelY, TITLE);
+        g.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, LABEL);
+        if (view == null) return;
+        int y = WorkerLayout.DETAIL_Y;
         row(g, y, "screen.serfdom.profession", Component.translatable("screen.serfdom.level", view.profession(), view.level()), TEXT);
         var status = view.status();
-        row(g, y += LINE, "screen.serfdom.status", Component.translatable("screen.serfdom.status." + status.name().toLowerCase(java.util.Locale.ROOT)),
+        row(g, y += WorkerLayout.LINE, "screen.serfdom.status", Component.translatable("screen.serfdom.status." + status.name().toLowerCase(java.util.Locale.ROOT)),
                 status == Screens.Status.HIRED || status == Screens.Status.CHILD ? TEXT : CAPTIVE);
-        row(g, y += LINE, "screen.serfdom.bed", view.bed(), TEXT);
-        row(g, y += LINE, "screen.serfdom.job", view.job(), TEXT);
+        row(g, y += WorkerLayout.LINE, "screen.serfdom.bed", view.bed(), TEXT);
+        row(g, y += WorkerLayout.LINE, "screen.serfdom.job", view.job(), TEXT);
         var need = Need.of(view.need());
-        row(g, y += LINE, "screen.serfdom.need", need.<Component>map(n -> Component.translatable("need.serfdom." + n.name().toLowerCase()))
+        row(g, y += WorkerLayout.LINE, "screen.serfdom.need", need.<Component>map(n -> Component.translatable("need.serfdom." + n.name().toLowerCase()))
                 .orElse(Component.translatable("screen.serfdom.need.none")), need.isPresent() ? NEED : TEXT);
     }
 
     private void row(GuiGraphics g, int y, String label, Component value, int colour) {
-        var l = Component.translatable(label);
-        g.drawString(font, l, left + PAD, y, LABEL);
-        g.drawString(font, value, left + PAD + 64, y, colour);
-    }
-
-    /** effects: the dimmed world, then the panel, under the buttons. */
-    @Override public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(g, mouseX, mouseY, partialTick);
-        g.fill(left, top, left + WIDTH, top + height, 0xC0101010);
-        g.renderOutline(left, top, WIDTH, height, 0xFF505050);
+        g.drawString(font, Component.translatable(label), WorkerLayout.DETAIL_X, y, LABEL);
+        var lines = font.split(value, WorkerLayout.WIDTH - WorkerLayout.PAD - WorkerLayout.VALUE_X);
+        if (!lines.isEmpty()) g.drawString(font, lines.get(0), WorkerLayout.VALUE_X, y, colour);
     }
 
     @Override public boolean isPauseScreen() { return false; }

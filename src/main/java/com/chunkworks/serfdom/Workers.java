@@ -7,6 +7,7 @@ import com.chunkworks.serfdom.compat.LawCompat;
 import com.chunkworks.serfdom.compat.ThiefCompat;
 import com.chunkworks.serfdom.domain.Chain;
 import com.chunkworks.serfdom.domain.Need;
+import com.chunkworks.serfdom.domain.Parting;
 import com.chunkworks.serfdom.post.Posts;
 import com.mojang.logging.LogUtils;
 import java.util.EnumSet;
@@ -117,11 +118,16 @@ public final class Workers {
                 village.map(DeedCompat.Found::id).orElse("no village"), seen, owedTo.orElse("none"));
     }
 
-    /** effects: the villager is free again: its chain comes off (and is not given back), it steps out
+    /** requires: {@code way} is one of the ways a living worker goes free (set free, escapes, freed
+     * by the law).
+     * effects: the villager is free again: its chain comes off (and is not given back), it steps out
      * of any vehicle, its bed and post are given up, it walks at a free villager's pace, the tool it
-     * keeps drops where it stands, and it lives as a free villager does, which walks it to the
-     * nearest village. What it carries stays with it. No case is owed it any more. */
-    public static void free(ServerLevel level, Villager villager) {
+     * keeps drops where it stands, what it wears does as {@link Parting#fate} says for {@code way}
+     * (set free, it drops; escaping or freed by the law, it stays on), and it lives as a free
+     * villager does, which walks it to the nearest village. What it carries stays with it. No case
+     * is owed it any more. */
+    public static void free(ServerLevel level, Villager villager, Parting.Way way) {
+        if (way == Parting.Way.DIES || way == Parting.Way.CONVERTS) throw new IllegalArgumentException("a living worker goes free: " + way);
         var worker = of(villager);
         if (!worker.owned()) return;
         if (villager.isLeashed()) villager.dropLeash(true, false);
@@ -132,12 +138,13 @@ public final class Workers {
             villager.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
             villager.spawnAtLocation(hand);
         }
+        for (var piece : takeOff(villager, way)) villager.spawnAtLocation(piece);
         releaseBed(level, villager, worker);
         leavePost(level, villager, worker);
         Remedies.forget(level.getServer(), villager.getUUID());
         set(level, villager, Worker.NONE);
         pace(villager);
-        LOG.info("Serfdom: {} ({}) is free", villager.getUUID(), worker.captive() ? "a captive" : "hired");
+        LOG.info("Serfdom: {} ({}) is free ({})", villager.getUUID(), worker.captive() ? "a captive" : "hired", way);
     }
 
     /** effects: the walking pace the villager's state calls for: a captive's slowdown on a captive
@@ -404,40 +411,63 @@ public final class Workers {
 
     private static void tell(ServerPlayer player, Component message) { player.displayClientMessage(message.copy().withStyle(ChatFormatting.GRAY), true); }
 
-    /** effects: a worker that dies drops the tool it keeps, everything it carries and the chain on
-     * it, and leaves its post; no case is owed it any more. */
+    /** effects: a worker that dies drops the tool it keeps, everything it carries, what it wears
+     * (but a piece with Curse of Vanishing) and the chain on it, and leaves its post; no case is
+     * owed it any more. What vanilla's own death drops already took (a piece marked to drop whole,
+     * with mob loot on) is not there to drop twice. */
     static void drops(LivingDropsEvent event) {
         if (!(event.getEntity() instanceof Villager villager) || !(villager.level() instanceof ServerLevel level)) return;
         var worker = of(villager);
         if (!worker.owned()) return;
-        for (var stack : belongings(villager, worker)) event.getDrops().add(new ItemEntity(level, villager.getX(), villager.getY(), villager.getZ(), stack));
+        for (var stack : belongings(villager, worker, Parting.Way.DIES)) event.getDrops().add(new ItemEntity(level, villager.getX(), villager.getY(), villager.getZ(), stack));
         villager.setData(Serfdom.WORKER, worker.withTool(ItemStack.EMPTY));
         departPost(level, villager, worker);
         Remedies.forget(level.getServer(), villager.getUUID());
     }
 
     /** effects: a worker turned into a zombie villager (or a witch) drops what a dead one does: the
-     * game carries over none of it, nor its owner, so the converted villager is nobody's. */
+     * game carries over none of it (it would delete what the worker wore), nor its owner, so the
+     * converted villager is nobody's. */
     static void converted(LivingConversionEvent.Post event) {
         if (!(event.getEntity() instanceof Villager villager) || !(villager.level() instanceof ServerLevel level)) return;
         var worker = of(villager);
         if (!worker.owned()) return;
         stash(villager);
         worker = of(villager);
-        for (var stack : belongings(villager, worker)) level.addFreshEntity(new ItemEntity(level, villager.getX(), villager.getY(), villager.getZ(), stack));
+        for (var stack : belongings(villager, worker, Parting.Way.CONVERTS)) level.addFreshEntity(new ItemEntity(level, villager.getX(), villager.getY(), villager.getZ(), stack));
         releaseBed(level, villager, worker);
         departPost(level, villager, worker);
         Remedies.forget(level.getServer(), villager.getUUID());
         LOG.info("Serfdom: worker {} turned into {} and dropped its things", villager.getUUID(), event.getOutcome().getType());
     }
 
-    /** effects: what an owned villager leaves when it dies: the tool it keeps, what it carries, and
-     * the chain when it is cuffed; its inventory is emptied. */
-    private static java.util.List<ItemStack> belongings(Villager villager, Worker worker) {
+    /** requires: {@code way} is dying or turning zombie.
+     * effects: what an owned villager leaves as it goes {@code way}: the tool it keeps, what it
+     * carries, what it wears (taken off as {@link #takeOff} does), and the chain when it is cuffed;
+     * its inventory is emptied. */
+    private static java.util.List<ItemStack> belongings(Villager villager, Worker worker, Parting.Way way) {
         var out = new java.util.ArrayList<ItemStack>();
         if (!worker.tool().isEmpty()) out.add(worker.tool());
         out.addAll(villager.getInventory().removeAllItems());
+        out.addAll(takeOff(villager, way));
         if (worker.cuffed()) out.add(new ItemStack(Serfdom.CHAIN_LEAD.get()));
+        return out;
+    }
+
+    /** effects: takes off what the villager wears as {@link Parting#fate} says for {@code way}: a
+     * piece that drops is taken off and returned, one that vanishes is taken off and lost, one that
+     * stays on is left. */
+    static java.util.List<ItemStack> takeOff(Villager villager, Parting.Way way) {
+        var out = new java.util.ArrayList<ItemStack>();
+        for (var slot : WorkerMenu.WORN) {
+            var piece = villager.getItemBySlot(slot);
+            if (piece.isEmpty()) continue;
+            switch (Parting.fate(way, WorkerMenu.piece(piece, null).vanishing())) {
+                case DROPS -> { villager.setItemSlot(slot, ItemStack.EMPTY); out.add(piece); }
+                case VANISHES -> villager.setItemSlot(slot, ItemStack.EMPTY);
+                case STAYS_ON -> {}
+            }
+        }
         return out;
     }
 

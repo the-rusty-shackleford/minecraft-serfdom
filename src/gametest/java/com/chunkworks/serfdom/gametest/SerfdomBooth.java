@@ -57,7 +57,9 @@ public final class SerfdomBooth {
     private static int tick;
     private static final List<Integer> workers = new ArrayList<>();
     private static BlockPos post, smithy, kitchen, capture;
-    private static int captive, trailerId;
+    private static int captive, trailerId, stage, walker;
+    private static final List<Integer> aboardIds = new ArrayList<>();
+    private static BlockPos lot;
 
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if (!Boolean.getBoolean("serfdom.booth")) return;
@@ -316,6 +318,8 @@ public final class SerfdomBooth {
                         Workers.capture(l, v, p, new ItemStack(Serfdom.CHAIN_LEAD.get()));
                         aboard.add(v);
                     }
+                    aboardIds.clear();
+                    for (var v : aboard) aboardIds.add(v.getId());
                     p.teleportTo(l, capture.getX() + 0.5, capture.getY(), capture.getZ() + 1.5, 0F, 10F);
                     p.getInventory().setItem(0, ItemStack.EMPTY);
                     check(trailer.interact(p, net.minecraft.world.InteractionHand.MAIN_HAND).consumesAction(), "an empty-handed click loads");
@@ -330,13 +334,226 @@ public final class SerfdomBooth {
                     server(mc, p -> p.teleportTo(p.serverLevel(), capture.getX() + 6.5, capture.getY() + 1.0, capture.getZ() + 8.5, 90F, 10F));
                 }
                 case 600 -> photo(mc, "17-trailer-side");
-                case 620 -> {
+                // ---- 2b: armour on villagers (D-0004) ----
+                case 620 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    lot = capture.offset(0, 0, 40);
+                    var at = net.minecraft.world.phys.Vec3.atBottomCenterOf(lot);
+                    for (int x = -10; x <= 30; x++) for (int z = -4; z <= 34; z++) {
+                        l.setBlockAndUpdate(lot.offset(x, -1, z), Blocks.GRASS_BLOCK.defaultBlockState());
+                        for (int y = 0; y < 5; y++) l.setBlockAndUpdate(lot.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                    }
+                    // The seven materials in a row, facing the camera.
+                    VillagerProfession[] trades = {VillagerProfession.FARMER, VillagerProfession.FLETCHER, VillagerProfession.ARMORER, VillagerProfession.CLERIC,
+                            VillagerProfession.LIBRARIAN, VillagerProfession.MASON, VillagerProfession.WEAPONSMITH};
+                    for (int i = 0; i < 7; i++) stand(l, at.add(-5 + i * 1.5, 0, 6), 180F, trades[i], set(l, i));
+                    // The close-up stage: one villager in iron, alone.
+                    stage = stand(l, at.add(14, 0, 6), 180F, VillagerProfession.TOOLSMITH, set(l, 2)).getId();
+                    // The robe and the hats: a chestplate alone, leggings alone, boots alone, a helmet alone, bare.
+                    var iron = new ItemStack[]{new ItemStack(Items.IRON_HELMET), new ItemStack(Items.IRON_CHESTPLATE), new ItemStack(Items.IRON_LEGGINGS), new ItemStack(Items.IRON_BOOTS)};
+                    stand(l, at.add(-5, 0, 14), 180F, VillagerProfession.FARMER, ItemStack.EMPTY, iron[1].copy());
+                    stand(l, at.add(-2.5, 0, 14), 180F, VillagerProfession.FARMER, ItemStack.EMPTY, ItemStack.EMPTY, iron[2].copy());
+                    stand(l, at.add(0, 0, 14), 180F, VillagerProfession.SHEPHERD, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, iron[3].copy());
+                    stand(l, at.add(2.5, 0, 14), 180F, VillagerProfession.FARMER, iron[0].copy());
+                    stand(l, at.add(5, 0, 14), 180F, VillagerProfession.FARMER);
+                    // Heads on each trade: helmets over hats and hoods, a carved pumpkin, a zombie's head.
+                    VillagerProfession[] hatted = {VillagerProfession.FISHERMAN, VillagerProfession.SHEPHERD, VillagerProfession.LIBRARIAN, VillagerProfession.BUTCHER,
+                            VillagerProfession.CARTOGRAPHER, VillagerProfession.LEATHERWORKER, VillagerProfession.NITWIT};
+                    ItemStack[] heads = {new ItemStack(Items.GOLDEN_HELMET), new ItemStack(Items.CHAINMAIL_HELMET), new ItemStack(Items.DIAMOND_HELMET), new ItemStack(Items.CARVED_PUMPKIN),
+                            new ItemStack(Items.ZOMBIE_HEAD), new ItemStack(Items.TURTLE_HELMET), dyed(Items.LEATHER_HELMET, 0x3B5BA5)};
+                    for (int i = 0; i < 7; i++) stand(l, at.add(-5 + i * 1.5, 0, 20), 180F, hatted[i], heads[i]);
+                    // Lucky's Wardrobe's clothes, worn where each says.
+                    String[][] outfits = {{"farmer_hat", "leather_apron"}, {"top_hat", "snowy_coat", "snowy_pants", "snowy_boots"},
+                            {"snowy_hood", "taiga_coat", "taiga_pants", "taiga_boots"}, {"desert_hat", "desert_robe", "desert_pants", "desert_sandals"}};
+                    for (int i = 0; i < 4; i++) {
+                        var v = stand(l, at.add(-4.5 + i * 3, 0, 26), 180F, i == 0 ? VillagerProfession.FARMER : VillagerProfession.NONE);
+                        for (var path : outfits[i]) {
+                            var stack = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("luckyswardrobe", path)));
+                            check(!stack.isEmpty(), "Lucky's Wardrobe's " + path + " is registered");
+                            v.setItemSlot(v.getEquipmentSlotForItem(stack), stack);
+                        }
+                    }
+                    // A child in iron, a captive in chains in a chestplate and helmet, an elytra.
+                    var child = stand(l, at.add(18, 0, 14), 180F, VillagerProfession.NONE, set(l, 2));
+                    child.setAge(-24000);
+                    var chained = stand(l, at.add(20.5, 0, 14), 180F, VillagerProfession.MASON);
+                    Workers.capture(l, chained, p, new ItemStack(Serfdom.CHAIN_LEAD.get()));
+                    chained.dropLeash(true, false);
+                    chained.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
+                    chained.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
+                    stand(l, at.add(23, 0, 14), 180F, VillagerProfession.CLERIC, ItemStack.EMPTY, new ItemStack(Items.ELYTRA));
+                    // Beside vanilla's own: a zombie villager in the same iron and the same diamond.
+                    stand(l, at.add(17, 0, 22), 180F, VillagerProfession.FARMER, set(l, 2));
+                    zombie(l, at.add(18.5, 0, 22), set(l, 2));
+                    stand(l, at.add(21, 0, 22), 180F, VillagerProfession.FARMER, set(l, 4));
+                    zombie(l, at.add(22.5, 0, 22), set(l, 4));
+                    // The walker, side on.
+                    walker = stand(l, at.add(16, 0, 30), -90F, VillagerProfession.FARMER, set(l, 4)).getId();
+                    p.teleportTo(l, lot.getX() + 0.5, lot.getY(), lot.getZ() - 1.5, 0F, 5F);
+                    mc.execute(() -> mc.options.hideGui = true);
+                });
+                case 660 -> {
+                    var row = mc.level.getEntitiesOfClass(Villager.class, new net.minecraft.world.phys.AABB(lot.offset(-6, 0, 5)).expandTowards(12, 3, 2));
+                    check(row.size() == 7 && row.stream().allMatch(v -> !v.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).isEmpty()), "the client sees seven villagers in chestplates: " + row.size());
+                    photo(mc, "18-armour-materials-front");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 0.5, lot.getY(), lot.getZ() + 12.5, 180F, 5F));
+                }
+                case 680 -> {
+                    photo(mc, "19-armour-materials-back");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 14.5, lot.getY(), lot.getZ() + 4.2, 0F, 18F));
+                }
+                case 700 -> {
+                    photo(mc, "20-armour-closeup-front");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 16.8, lot.getY(), lot.getZ() + 6.5, 90F, 18F));
+                }
+                case 720 -> {
+                    photo(mc, "21-armour-closeup-side");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 14.5, lot.getY(), lot.getZ() + 8.8, 180F, 18F));
+                }
+                case 740 -> {
+                    photo(mc, "22-armour-closeup-back");
+                    server(mc, p -> {
+                        var v = (Villager) p.serverLevel().getEntity(stage);
+                        var worn = set(p.serverLevel(), 6);
+                        for (int i = 0; i < 4; i++) v.setItemSlot(com.chunkworks.serfdom.WorkerMenu.WORN[i], worn[i]);
+                        p.teleportTo(p.serverLevel(), lot.getX() + 13.3, lot.getY(), lot.getZ() + 4.4, -35F, 16F);
+                    });
+                }
+                case 760 -> {
+                    photo(mc, "23-armour-closeup-trimmed");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 0.5, lot.getY(), lot.getZ() + 9.8, 0F, 8F));
+                }
+                case 780 -> {
+                    photo(mc, "24-robe-rule");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 0.5, lot.getY(), lot.getZ() + 15.8, 0F, 8F));
+                }
+                case 800 -> {
+                    photo(mc, "25-heads-on-trades");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 0.5, lot.getY(), lot.getZ() + 21.8, 0F, 8F));
+                }
+                case 820 -> {
+                    photo(mc, "26-wardrobe-front");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 0.5, lot.getY(), lot.getZ() + 30.2, 180F, 8F));
+                }
+                case 840 -> {
+                    photo(mc, "27-wardrobe-back");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 20.5, lot.getY(), lot.getZ() + 9.8, 0F, 8F));
+                }
+                case 860 -> {
+                    var cuffed = mc.level.getEntitiesOfClass(Villager.class, new net.minecraft.world.phys.AABB(lot.offset(20, 0, 14)).inflate(0.6)).stream().filter(Workers::cuffed).count();
+                    check(cuffed == 1, "the client sees the captive in chains");
+                    photo(mc, "28-child-captive-elytra");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 20.5, lot.getY(), lot.getZ() + 18.2, 180F, 8F));
+                }
+                case 880 -> {
+                    photo(mc, "29-elytra-back");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 20.0, lot.getY(), lot.getZ() + 18.0, 0F, 8F));
+                }
+                case 900 -> {
+                    photo(mc, "30-beside-zombie-villagers");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), lot.getX() + 19.5, lot.getY(), lot.getZ() + 26.5, 0F, 8F));
+                }
+                case 950 -> photo(mc, "31-walking");
+                case 970 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    for (int i = 0; i < aboardIds.size(); i++) {
+                        var v = (Villager) l.getEntity(aboardIds.get(i));
+                        var worn = set(l, i + 1);
+                        for (int j = 0; j < 4; j++) v.setItemSlot(com.chunkworks.serfdom.WorkerMenu.WORN[j], worn[j]);
+                    }
+                    p.teleportTo(l, capture.getX() + 0.5, capture.getY() + 0.6, capture.getZ() + 13.5, 180F, 12F);
+                });
+                case 1000 -> {
+                    photo(mc, "32-trailer-armoured");
+                    mc.options.hideGui = false;
+                    server(mc, p -> {
+                        var l = p.serverLevel();
+                        var v = (Villager) l.getEntity(stage);
+                        Workers.hire(l, v, p, Optional.empty());
+                        p.teleportTo(l, lot.getX() + 14.5, lot.getY(), lot.getZ() + 3.5, 0F, 10F);
+                        Screens.openWorker(p, v);
+                    });
+                }
+                case 1030 -> {
+                    var screen = screen(mc, WorkerScreen.class, "the dressed worker's screen opens");
+                    check(screen.view() != null && screen.getMenu().villager() != null && screen.getMenu().villager().getId() == stage, "the view came and bound the menu");
+                    check(screen.getMenu().slots.get(com.chunkworks.serfdom.WorkerMenu.WEARING + 1).getItem().is(Items.IRON_CHESTPLATE), "the client's chest slot holds the trimmed chestplate");
+                    photo(mc, "33-worker-screen-dressed");
+                    mc.setScreen(null);
+                }
+                case 1050 -> {
                     LOG.info("serfdom booth: COMPLETE");
                     mc.stop();
                 }
-                default -> {}
+                default -> {
+                    if (tick > 905 && tick < 950) server(mc, p -> {
+                        var v = p.serverLevel().getEntity(walker);
+                        if (v != null) v.setPos(v.getX() + 0.12, v.getY(), v.getZ());
+                    });
+                }
             }
         } catch (Throwable failure) { LOG.error("serfdom booth: FAIL", failure); mc.stop(); }
+    }
+
+    /** effects: a villager standing still at {@code at}, facing {@code yaw}, at the trade, wearing
+     * the pieces head first. */
+    private static Villager stand(net.minecraft.server.level.ServerLevel l, net.minecraft.world.phys.Vec3 at, float yaw, VillagerProfession trade, ItemStack... worn) {
+        var v = EntityType.VILLAGER.create(l);
+        v.moveTo(at.x, at.y, at.z, yaw, 0F);
+        v.setYHeadRot(yaw);
+        v.setYBodyRot(yaw);
+        v.setVillagerData(v.getVillagerData().setProfession(trade).setLevel(2));
+        v.setNoAi(true);
+        v.setPersistenceRequired();
+        for (int i = 0; i < worn.length; i++) if (!worn[i].isEmpty()) v.setItemSlot(com.chunkworks.serfdom.WorkerMenu.WORN[i], worn[i]);
+        l.addFreshEntity(v);
+        return v;
+    }
+
+    /** effects: a zombie villager standing still at {@code at}, facing the camera, wearing the pieces. */
+    private static void zombie(net.minecraft.server.level.ServerLevel l, net.minecraft.world.phys.Vec3 at, ItemStack... worn) {
+        var z = EntityType.ZOMBIE_VILLAGER.create(l);
+        z.moveTo(at.x, at.y, at.z, 180F, 0F);
+        z.setYHeadRot(180F);
+        z.setYBodyRot(180F);
+        z.setNoAi(true);
+        z.setPersistenceRequired();
+        for (int i = 0; i < worn.length; i++) if (!worn[i].isEmpty()) z.setItemSlot(com.chunkworks.serfdom.WorkerMenu.WORN[i], worn[i]);
+        l.addFreshEntity(z);
+    }
+
+    /** effects: the booth's armour set {@code n}, head first: 0 leather dyed brown, 1 chainmail,
+     * 2 iron, 3 gold, 4 diamond, 5 netherite, 6 a turtle shell, an iron chestplate trimmed in gold,
+     * enchanted diamond leggings and dyed leather boots. */
+    private static ItemStack[] set(net.minecraft.server.level.ServerLevel l, int n) {
+        return switch (n) {
+            case 0 -> new ItemStack[]{dyed(Items.LEATHER_HELMET, 0x7A4A26), dyed(Items.LEATHER_CHESTPLATE, 0x7A4A26), dyed(Items.LEATHER_LEGGINGS, 0x7A4A26), dyed(Items.LEATHER_BOOTS, 0x7A4A26)};
+            case 1 -> pieces(Items.CHAINMAIL_HELMET, Items.CHAINMAIL_CHESTPLATE, Items.CHAINMAIL_LEGGINGS, Items.CHAINMAIL_BOOTS);
+            case 2 -> pieces(Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS);
+            case 3 -> pieces(Items.GOLDEN_HELMET, Items.GOLDEN_CHESTPLATE, Items.GOLDEN_LEGGINGS, Items.GOLDEN_BOOTS);
+            case 4 -> pieces(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS);
+            case 5 -> pieces(Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS);
+            default -> {
+                var chest = new ItemStack(Items.IRON_CHESTPLATE);
+                var registries = l.registryAccess();
+                chest.set(net.minecraft.core.component.DataComponents.TRIM, new net.minecraft.world.item.armortrim.ArmorTrim(
+                        registries.registryOrThrow(net.minecraft.core.registries.Registries.TRIM_MATERIAL).getHolderOrThrow(net.minecraft.world.item.armortrim.TrimMaterials.GOLD),
+                        registries.registryOrThrow(net.minecraft.core.registries.Registries.TRIM_PATTERN).getHolderOrThrow(net.minecraft.world.item.armortrim.TrimPatterns.COAST)));
+                var legs = new ItemStack(Items.DIAMOND_LEGGINGS);
+                legs.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                yield new ItemStack[]{new ItemStack(Items.TURTLE_HELMET), chest, legs, dyed(Items.LEATHER_BOOTS, 0x2E6B3A)};
+            }
+        };
+    }
+    private static ItemStack[] pieces(net.minecraft.world.item.Item... items) {
+        var out = new ItemStack[items.length];
+        for (int i = 0; i < items.length; i++) out[i] = new ItemStack(items[i]);
+        return out;
+    }
+    private static ItemStack dyed(net.minecraft.world.item.Item item, int rgb) {
+        var stack = new ItemStack(item);
+        stack.set(net.minecraft.core.component.DataComponents.DYED_COLOR, new net.minecraft.world.item.component.DyedItemColor(rgb, true));
+        return stack;
     }
 
     /** effects: clicks the screen's button labelled {@code label}. */

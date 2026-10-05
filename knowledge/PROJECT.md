@@ -1,5 +1,11 @@
 # Serfdom
 
+**0.4.0 (phase 2b, what a worker wears, D-0004): built and gated on 2026-10-05. Not released.**
+Gate: `devtools/verification/release-0.4.0.md`. Rusty took every call of the preview: leggings take
+the robe off; armour wears as on a player; set free drops the gear, while escaping or freed by the
+law it leaves wearing it. Not seen by Rusty: photos 18 to 33. 0.4.0 carries 0.3.0 whole and ships
+in its place, with the same two siblings.
+
 **0.3.0 (phase 2a, the capture, D-0003): built and gated on 2026-10-04. Not released.**
 Gate: `devtools/verification/release-0.3.0.md` (160 JUnit, 47 GameTests, booth 42 checks with 17
 photos, 22 of 22 mutations caught; jar sha1 `0a140435`). Not seen by Rusty: photos 05 and 13 to
@@ -17,7 +23,7 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | No remote yet |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md` (all in `devtools/verification/`) |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md` (all in `devtools/verification/`) |
 | Release | Only on Rusty's go, as a new jar in the pack, with Vanilla Wheels 1.11.0 and Village Law 1.1.0 |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
@@ -26,7 +32,8 @@ village ids) and Farmer's Delight 1.3 (tomatoes, rice).
 
 The villager overhaul in Rusty's spec (`~/Downloads/serfdom-mod-spec.md`), in five phases. Phase 2
 is split as phase 1 was: 2a, the capture, is [D-0003](decisions/D-0003.md); 2b, equipment slots
-and the armour layer, is next. Phase 1 is [D-0001](decisions/D-0001.md), split by Rusty into:
+and the armour layer, is [D-0004](decisions/D-0004.md). Phase 1 is [D-0001](decisions/D-0001.md),
+split by Rusty into:
 
 - **1a:** hiring, beds, the Work Post, woodcutting, farming, sorting, need icons, the Worker
   Screen, the chain lead, fence gates.
@@ -57,6 +64,9 @@ Each phase is previewed to Rusty before it is built.
     `Repair`, `Workshop` (a workshop's next step and each row's standing).
   - 2a: `Bond`, `Area`, `Chain` (the gestures), `Capture` (verdict, the hold), `Remedy` (what each
     case is owed), `Escape`, `Birth`, `WorkSong`; `WorkDay` and `Pace` gained the captive's.
+  - 2b: `Wardrobe` (who, what fits, Binding, shift-clicks), `Parting` (gear on each way out),
+    `Fit` (the armour's stand-in poses, with box maths), `WorkerLayout` (the screen, pinned to
+    688×288).
 - `src/main`:
   - `Serfdom` (registries), `SerfdomConfig`.
   - `Worker` (the saved attachment) and `Workers` (state, hire, beds, posts, needs, the tool between
@@ -64,6 +74,7 @@ Each phase is previewed to Rusty before it is built.
   - `WorkerBrain` (the owned brain and its schedules), `Hire`, `Picks`, `Screens`
     (payloads), `ChainLead`, `PlacedLogs`.
   - 2a: `Captures` (the hold), `Remedies` (saved data, the law's remedy), `Humming`.
+  - 2b: `WorkerMenu` (the Worker Screen's menu on the villager's own armour slots).
   - `behavior/`: `WorkShift`, `FollowOwner`, `KeepBed`, `OpenGates`, `WorkerNavigation`; 2a:
     `Stay`, `CaptiveNight`, `RunHome`.
   - `job/`: `Jobs` (data), `Woodcutting` + `WoodTask`, `Farming` + `CropTask`, `Storage`, `Tools`;
@@ -72,12 +83,15 @@ Each phase is previewed to Rusty before it is built.
   - `post/`: `WorkPostBlock`, `WorkPostBlockEntity`, `Posts`, `Departed`.
   - `compat/`: `DeedCompat`, `FarmersDelightCompat`; 2a: `ThiefCompat`, `LawCompat`, `WheelsCompat`.
   - `client/`: the Worker and Work Post screens, `StockScreen`, `PickerScreen`, `NeedIcons`,
-    `PostOutline`, `ChainLook`; 2a: `CuffsLayer`.
+    `PostOutline`, `ChainLook`; 2a: `CuffsLayer`; 2b: `VillagerArmourLayer`, `VillagerElytraLayer`,
+    `Dress` (robe and hat).
   - `mixin/`: the owned brain and every villager's navigation, the chain's drop, the chain's
     colour; a furnace's burn time and fuel duration; a smithing upgrade's three ingredients; 2a:
-    a captive's golem, its bed and the cats, an owned child and its bed.
+    a captive's golem, its bed and the cats, an owned child and its bed; 2b: a villager's armour
+    wear (`VillagerWearMixin`), the hat under a helmet (`VillagerModelMixin`, client).
 - `src/gametest`: `Yard` (fixtures), `Huts` (a village with a guard, from Village Law's tests),
-  `WorkerGameTests`, `WorkshopGameTests`, `CaptiveGameTests`, `SerfdomBooth`, `TestMod`.
+  `WorkerGameTests`, `WorkshopGameTests`, `CaptiveGameTests`, `EquipmentGameTests`, `SerfdomBooth`,
+  `TestMod`.
 - `devtools/art/art.py` draws every texture; `devtools/sound/work_song.py` renders the captives'
   work song to `run/work_song.wav`.
 
@@ -146,14 +160,36 @@ Each phase is previewed to Rusty before it is built.
 - **The trailer's body takes every click through its open doors**, so a passenger inside cannot be
   clicked; unloading is the crouch with a lead or a chain.
 
+**Met in 2b:**
+- **The killing blow wears the armour first.** A test that killed a dressed worker with a hit of
+  1000 found no armour dropped: the hit took 250 from every piece and broke them all, as it would
+  a player's. Tests kill with `kill()`, whose damage passes armour.
+- **NeoForge's menu open with extra data can't reach a mock player.** Its
+  `AdvancedOpenScreenPayload` is neither built in nor in the minecraft namespace, so the
+  connection refuses it. The menu opens with vanilla's packet, and the view follows as Serfdom's
+  payload, which `send` skips for a player without the channel.
+- **Ticking a mock player by hand** (`doTick`) syncs its attachments and crashes the server the
+  same way. A test asks the menu's `stillValid`, which is what that tick asks before shutting it.
+- **Curios on the gametest server** sends its sync payload to every mock player as it joins, and
+  every test with a player fails. Lucky's Wardrobe's client code needs Curios to load, so Curios
+  goes in the booth's own `mods` folder only.
+- **Guard Villagers draws a child villager's head 1.5 times larger** (its `bigHeadBabyVillager`
+  client option, set in `renderToBuffer`). The helmet sat inside the head until `Fit.head` took the
+  head's scale.
+- **`VillagerModel.hatVisible` sets the head's visibility too,** and the profession layer calls it
+  on every draw. Hiding the hat is done after it, by a mixin.
+- **Vanilla never wears a mob's armour.** `LivingEntity.hurtArmor` is empty; NeoForge's
+  `ArmorHurtEvent` route works for any entity once something calls `doHurtEquipment`.
+
 ## Next
 
-- Rusty vets 0.3.0: photos 05 and 13 to 17, and the song (`run/work_song.wav`). Still unseen from
-  0.2.0: 1b's photos 07 to 12 and the "no station" icon in photo 01.
-- Then the release, on his go: a public repo for Serfdom, tags for all three, GitHub releases;
-  in the pack a new `add-file` for Serfdom and `--replaces` for Vanilla Wheels (1.10.1) and
-  Village Law (1.0.0).
-- Phase 2b (equipment slots and the armour layer) is next: preview it first.
-- Not covered by any test: Farmer's Delight's placed skillet (left out, D-0002); a pack's much
+- Rusty vets 0.4.0's photos 18 to 33 (armour, clothes, the robe rule, the child, the trailer, the
+  dressed Worker Screen); 0.3.0's photos 05 and 13 to 17 and the song (`run/work_song.wav`); and
+  0.2.0's photos 07 to 12 and the "no station" icon in photo 01.
+- Then the release, on his go: a public repo for Serfdom, tags, GitHub releases; in the pack a new
+  `add-file` for Serfdom and `--replaces` for Vanilla Wheels (1.10.1) and Village Law (1.0.0).
+- Phase 3 (hunger and cooking) is next: preview it first.
+- Not covered by any test: how the armour looks (the fit, the robe and the hat are judged by the
+  booth's photos, and `FitTest` checks the boxes only); Farmer's Delight's placed skillet (left out, D-0002); a pack's much
   larger recipe book (the planner was timed on the gametest server's: 2.6 ms for the eight
   hardest rows over 1178 rules); an escape across unloaded chunks; a remedy freed on load.

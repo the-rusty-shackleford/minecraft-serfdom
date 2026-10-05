@@ -20,8 +20,9 @@ import net.minecraft.world.entity.npc.Villager;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
-/** The Worker Screen and the Work Post's screen (D-0001, D-0002): what the server sends to show
- * them, and the buttons the client sends back. A workshop post's view carries its stock list,
+/** The Worker Screen and the Work Post's screen (D-0001, D-0002, D-0004): what the server sends to
+ * show them, and the buttons the client sends back. The Worker Screen is a menu of the worker's
+ * armour slots ({@link WorkerMenu}) with its view sent beside it. A workshop post's view carries its stock list,
  * each row with what is stocked and why it is stuck. The screens are client code, handed each view through
  * {@link Client}. Every action is checked again on the server: the player must own the worker or
  * the post and stand within reach. */
@@ -137,8 +138,16 @@ public final class Screens {
 
     // ---- the worker -------------------------------------------------------------------------
 
-    /** effects: shows {@code player} their worker's screen. */
-    public static void openWorker(ServerPlayer player, Villager worker) { send(player, view(worker)); }
+    /** effects: opens {@code player}'s worker's screen: the menu of its four armour slots (opened as
+     * the game opens any, by its own packet), then the view of the rest, which the client binds to
+     * the menu as it comes. */
+    public static void openWorker(ServerPlayer player, Villager worker) {
+        player.openMenu(new net.minecraft.world.SimpleMenuProvider((id, inventory, p) -> new WorkerMenu(id, inventory, worker), Workers.name(worker)));
+        send(player, view(worker));
+    }
+
+    /** effects: shows the open Worker Screen the worker as it is now. */
+    static void refreshWorker(ServerPlayer player, Villager worker) { send(player, view(worker)); }
 
     /** effects: sends the payload when the player's client can take it; a fake player's cannot. */
     private static void send(ServerPlayer player, CustomPacketPayload payload) {
@@ -184,14 +193,14 @@ public final class Screens {
             }
             case CLEAR_JOB -> {
                 Workers.clearJob(level, worker);
-                openWorker(player, worker);
+                refreshWorker(player, worker);
             }
             case SET_FREE -> {
                 var name = Workers.name(worker);
                 // The owner's own chain comes back to them; only the law confiscates one.
                 if (Workers.of(worker).cuffed() && !player.getAbilities().instabuild)
                     com.chunkworks.carried.api.Carried.giveOrDrop(player, new net.minecraft.world.item.ItemStack(Serfdom.CHAIN_LEAD.get()));
-                Workers.free(level, worker);
+                Workers.free(level, worker, com.chunkworks.serfdom.domain.Parting.Way.SET_FREE);
                 player.displayClientMessage(Component.translatable("message.serfdom.set_free", name).withStyle(ChatFormatting.GOLD), true);
             }
         }

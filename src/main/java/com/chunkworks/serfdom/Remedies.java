@@ -68,7 +68,7 @@ public final class Remedies extends SavedData {
             var loaded = find(player.server, captive);
             if (loaded == null) { r.freeOnLoad.add(captive); continue; }
             player.sendSystemMessage(Component.translatable("message.serfdom.law.freed", Workers.name(loaded)).withStyle(ChatFormatting.GOLD));
-            Workers.free((ServerLevel) loaded.level(), loaded);
+            Workers.free((ServerLevel) loaded.level(), loaded, com.chunkworks.serfdom.domain.Parting.Way.FREED_BY_LAW);
         }
     }
 
@@ -94,7 +94,7 @@ public final class Remedies extends SavedData {
             if (r.freeOnLoad.remove(v.getUUID())) {
                 r.setDirty();
                 // Freed on its next tick: the entity is joining, and its brain is rebuilt as it is freed.
-                level.getServer().execute(() -> { if (v.isAlive() && Workers.of(v).owned()) Workers.free(level, v); });
+                level.getServer().execute(() -> { if (v.isAlive() && Workers.of(v).owned()) Workers.free(level, v, com.chunkworks.serfdom.domain.Parting.Way.FREED_BY_LAW); });
             }
         });
     }
