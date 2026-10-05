@@ -7,14 +7,15 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.5.0:
+This is 0.6.0:
 - phase 1: woodcutting and farming, cooking and the blacksmith;
 - phase 2a: the capture (D-0003);
 - phase 2b: what a worker wears (D-0004);
-- phase 3: hunger and meals (D-0005).
+- phase 3: hunger and meals (D-0005);
+- phase 4a: purses, the For Sale block, and villagers who shop (D-0006).
 
 The rest of the plan:
-- **4:** wallets, trade between villagers, and the For Sale block.
+- **4b:** climate, taste, wants, window shopping, and villagers selling to villagers (D-0006).
 - **5:** raids and defending the base.
 
 ## Playing it
@@ -35,6 +36,7 @@ The rest of the plan:
    - its profession and level;
    - its bed and its job;
    - its hunger, as ten drumsticks;
+   - its purse, in emeralds (see [The market](#the-market));
    - what it needs, if anything;
    - your inventory below.
 
@@ -192,7 +194,74 @@ free villagers don't hunger.
   - Raw meat and potatoes are cooked first when they can be.
 - You see it eat, food in hand, with crumbs. Bowls and anything it cooked but didn't eat go back to
   its home chest.
-- **Buying food** with emeralds comes with wallets in phase 4.
+- **Buying food.** With no food at all at home or in the canteen, a worker that isn't full and
+  holds an emerald walks to a For Sale block within 64 blocks of its bed and buys the cheapest food
+  it will pay for, enough to fill up; it eats there and takes the rest home. Captives never buy. See
+  [The market](#the-market).
+
+### The market
+
+**Every villager has a purse:** a number of emeralds, at most 64. Wandering traders have none.
+
+- **Trading with you.** A villager pays for what it buys from you out of its purse. A trade it
+  can't pay shows sold out (the red cross) and gives nothing; the emeralds you pay it go into its
+  purse, and past 64 they are lost (the sale still goes through). The trade screen shows its purse
+  over the panel's corner. A sold-out trade of this kind is only closed while you trade: restocking
+  and prices are vanilla's.
+- **Where purses start.** Every villager that was in the world before this version, and every
+  villager a newly generated village brings, starts full (64). One born, cured, hatched from an egg,
+  summoned or spawned starts at 4.
+- **The morning deposit.** The first time a free or hired villager is seen in a morning (0–2000),
+  if its purse holds fewer than 4 it gets 2. A villager not loaded that morning misses it. Captives
+  and children never get it.
+- **The hire fee** goes into the hired villager's purse.
+
+**The For Sale block** is a sign over a chest over an emerald, shaped. Place it, then right-click
+it:
+
+- **Stall tab.** Click an item onto the slot at the top left: that is what it sells, components and
+  all (an empty click clears it). Set how many a sale and the price of a sale (1 to 64 each; shift
+  for eight at a time). Its 18 stock slots take only that item; its 9 proceeds slots hold the
+  emeralds it takes, and only give. It is open while its stock holds a sale and its proceeds can take
+  a price.
+- **Ledger tab.** Each of the last seven days' sales, emeralds, and the visits that came to nothing
+  (too pricey, couldn't afford, not interested), and the latest visits: who (by trade), when, and
+  what they did.
+- **Above it** the item it sells turns slowly. Look at it within eight blocks to read "8 Bread for 1
+  emerald", or "sold out".
+- **Hoppers and pipes** fill its stock (that item only) and take its emeralds.
+- **Only you** open it or break it; anyone else is told whose it is and what it sells. Explosions
+  leave it. Broken, it drops its stock and proceeds.
+
+**Who shops, and when.** Free and hired villagers, grown, with a bed: a free villager from 9000 to
+11000, a hired worker in its meeting hours (8000–10000). Once each of those times, when it needs
+something and holds an emerald, it walks to the For Sale block within 64 blocks of its bed that
+sells it cheapest (among those it can afford a sale at), waits its turn (one customer at a time),
+looks it over, and buys or not. At most three sales a day. Captives, children and villagers in
+chains never shop. A villager whose bed is in a village someone bought with Village Deed shops only
+at the owner's stalls and those of the players the owner trusts.
+
+- **What a free villager needs.** A free villager keeps a household: what it has at home, saved on
+  it (a town house has no chest). Its trade's needs list says how many of each it keeps and how many
+  it uses a day: food for everyone (keeps 4, eats 2), a farmer's hoe and bone meal, a butcher's raw
+  meat and coal, a smith's coal and iron, a librarian's paper, and so on. Each morning it uses its
+  share, and whatever falls short of what it keeps it goes to buy.
+- **What a worker needs.** Food, when the ready food in its home chest and the canteen fills less
+  than a day (20 points), which goes to its home chest; and whatever its post shows it lacks (its
+  job's tool, fuel, or what its stock rows are short of), which it puts in the post's chests as its
+  job sorts. It spends its own purse on it.
+- **At the stall.** It will pay up to half again an item's base value for something it needs. At or
+  under that it buys; above it, its chance falls in a straight line to nothing at half again more.
+  A purse short of one sale can't afford it. It buys as many sales as cover its need, while it can
+  pay and the stall has them.
+- **What you see.** A bargain (at or under the item's base value): green sparkles and a "yes". Any
+  other purchase: a "yes". Too pricey: the head shake and a "no". Can't afford: it looks at an
+  emerald in its hand. Then it walks home with what it bought in its arms.
+- **Base values,** in emeralds an item: the data packs' values first, then what villagers' own price
+  lists ask or pay for it (the median), then, for food, bread's price for each point it fills.
+  Anything else has none, and nobody buys it.
+- **Your workers never sell your goods:** what is in your posts' chests stays yours. Sell through a
+  stall; your workers shop there like anyone.
 
 ### Children
 
@@ -206,7 +275,7 @@ free.
 |---|---|
 | 0–2000 | Idle |
 | 2000–8000 | Works at its post |
-| 8000–10000 | Meets at a bell, if one is in reach |
+| 8000–10000 | Meets at a bell, if one is in reach; or goes shopping, when it needs something |
 | 10000–12000 | Idle |
 | 12000 to dawn | Sleeps in its bed |
 
@@ -330,6 +399,13 @@ carries, everything it wears and the chain on it. A cured one is a free villager
 | `hunger` | true | Workers grow hungry and eat. Off: nobody hungers and work never slows for it. |
 | `hunger_per_hour` | 1.0 | Hunger points a worker loses each waking hour; half that asleep. |
 | `hungry_floor` | 0.5 | How fast a worker just short of starving works, as a share of its fed pace. |
+| `economy` | true | Purses, the For Sale block's customers and shopping. Off: villagers trade as vanilla's, nobody shops, no deposit. |
+| `purse_cap` | 64 | The most a purse holds. |
+| `deposit` | 2 | The morning deposit. |
+| `deposit_below` | 4 | A purse under this gets the deposit; a villager born or cured starts with this many. |
+| `shop_reach` | 64 | Blocks from its bed within which a villager shops. |
+| `sales_per_day` | 3 | The most sales a villager buys in a day, meals included. |
+| `need_bonus` | 1.5 | What a villager will pay for something it needs, as a multiple of its base value. |
 | `workers` | true | The whole module: off, nobody can hire and owned villagers live as free ones. |
 
 Jobs are data: `data/<namespace>/serfdom/job/<id>.json`. A file names:
@@ -345,6 +421,16 @@ Jobs are data: `data/<namespace>/serfdom/job/<id>.json`. A file names:
 
 A data pack can add a job built from these kinds, or change the radii, the professions or a
 workshop's stations. The fuel a worker may burn is the item tag `#serfdom:fuel`.
+
+The market's data (D-0006):
+
+- **Needs:** `data/<namespace>/serfdom/needs/<name>.json`, one profession's list (`"*"` is
+  everyone's, first): `{"profession": "minecraft:farmer", "needs": [{"name": "hoe", "tag":
+  "minecraft:hoes", "keep": 1, "per_day": 0.125}]}`. A need names a `tag`, `items`, or `"food":
+  true` (any ready food).
+- **Values:** `data/<namespace>/serfdom/values/<name>.json`, `{"values": {"minecraft:bone_meal":
+  0.1, "#c:gems": 3}}`, emeralds an item, a tag with `#`. A value of 0 means nobody buys it. Files
+  are read in order of id, entries in file order; an item's own entry beats a tag's.
 
 ## How it works
 
@@ -438,6 +524,28 @@ workshop's stations. The fuel a worker may burn is the item tag `#serfdom:fuel`.
     canteen (`Posts.near`), and the free stations near home. Dishes are cooked with 1b's recipe
     book, fuel arithmetic and station loading.
   - `Jobs.speed` takes hunger's work speed, and the shift waits while starved.
+- **The market** (D-0006):
+  - **Purses** (`market/Purses`, `domain/Purse`) are an attachment on every villager
+    (`serfdom:purse`, with its shopping day). NeoForge's `FinalizeSpawnEvent` says how a villager
+    was made: a structure's starts full, any other spawn at the line; a villager joining with no
+    purse at all (saved before) gets a full one. A villager generated with its chunk does not join
+    as "loaded from disk", so the join flag can't tell.
+  - **Trades:** a mixin closes the offers the purse can't pay as a player starts trading
+    (`domain/Till`), a transient flag `MerchantOffer.isOutOfStock` reads; the flag goes with the
+    copy the offers packet makes. NeoForge's `TradeWithVillagerEvent` moves the emeralds and the
+    offers are sent again.
+  - **The stall** (`market/ForSaleBlockEntity`) is a point of interest (`serfdom:for_sale`), so
+    shoppers find it through the game's index, never by scanning; its item handler takes the sold
+    item into the stock slots and gives emeralds from the proceeds.
+  - **Shopping:** a core behaviour (`ShopTime`, on free villagers' vanilla brains too) pays the
+    deposit, uses the household, and in social time plans a trip (`market/Shoppers`,
+    `domain/Shopping`); the trip (`GoShopping`, the `serfdom:shop` activity) takes over as a meal
+    does and gives the schedule back. At the counter `domain/Verdict` judges, `market/Counter` makes
+    the sale and writes `domain/Ledger`. What it carries home is saved (`serfdom:basket`), one piece
+    shown in its hand marked so nothing takes it for a tool or drops it.
+  - **Values** (`market/Prices`, `domain/Values`) are worked out once the server starts, from the
+    data and every profession's price list, tried with a villager never added to the world (a
+    treasure map's world search is never run).
 - **The armour layer** (`client/VillagerArmourLayer`):
   - Vanilla's `HumanoidArmorLayer` draws on a stand-in player model posed from the villager's
     model each frame, by `domain/Fit`: the helmet lifted 2 pixels about the head's own pivot (and
@@ -450,7 +558,7 @@ workshop's stations. The fuel a worker may burn is the item tag `#serfdom:fuel`.
   - An elytra hangs 1.5 pixels farther back.
 
 Village Deed, Farmer's Delight, Ranged Weapons Mod, Thief, Village Law 1.1+ and Vanilla Wheels
-1.11+ are optional: without them there are no bought villages; no tomatoes, rice, pot, stove or
+1.11+ are optional: without them there are no bought villages (and no stalls barred from one); no tomatoes, rice, pot, stove or
 board; no weapons workbench; no crime in a capture; no case for it; and no trailer. Carried, the
 inventory protocol, is nested in the jar.
 
@@ -471,7 +579,9 @@ This runs the JUnit domain tests, the GameTests and the photo booth.
   Farmer's Delight and Lucky's Wardrobe from Modrinth's maven.
 - The booth also loads Curios, which Lucky's Wardrobe's client needs, from its own `run/booth/mods`
   folder (`prepareBoothMods`). On the gametest server it would send payloads to the mock players.
-- The booth needs a display: the Xephyr recipe in the workspace's `AGENTS.local.md`. Without one,
+- The booth needs a display: the Xephyr recipe in the workspace's `AGENTS.local.md`. Run the
+  build with that recipe's `DISPLAY=:7` and Mesa variables, never with the desktop's display in
+  the environment: the build opens the booth's window wherever `DISPLAY` points. Without a display,
   add `-PskipBooth`.
 - The GameTests log every worker's plan with `-Dserfdom.trace=true`, which the gametest run sets.
 

@@ -27,7 +27,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 /** Hiring (D-0001). Sneak-use with an empty hand on a villager that can be hired adds a green
  * [Hire for N] line under Village Deed's offer; a click within the offer's time pays the fee from
- * everything the player carries and makes the villager theirs. The gesture is taken after Village
+ * everything the player carries into the villager's purse (D-0006) and makes the villager theirs. The gesture is taken after Village
  * Deed has made its offer, so the trade screen does not cover the line. */
 public final class Hire {
     /** How near the villager must still be when the player clicks. */
@@ -90,6 +90,8 @@ public final class Hire {
             return 0;
         }
         Workers.hire(level, villager, player, DeedCompat.village(level, villager.blockPosition()));
+        // The fee is paid to the villager (D-0006).
+        if (com.chunkworks.serfdom.market.Purses.on()) com.chunkworks.serfdom.market.Purses.receive(villager, offer.fee());
         player.sendSystemMessage(Component.translatable("message.serfdom.hire.done", Workers.name(villager), offer.fee()).withStyle(ChatFormatting.GREEN));
         return 1;
     }

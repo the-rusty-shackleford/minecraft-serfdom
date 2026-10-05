@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": ["S", "C", "E"],
+  "key": {"S": {"tag": "minecraft:signs"}, "C": {"item": "minecraft:chest"}, "E": {"item": "minecraft:emerald"}},
+  "result": {"id": "serfdom:for_sale", "count": 1}
+}

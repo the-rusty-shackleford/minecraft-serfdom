@@ -35,8 +35,9 @@ public final class Screens {
     public enum Status { HIRED, CAPTIVE, CUFFED, ESCAPING, CHILD }
 
     /** What the Worker Screen shows; {@code hunger} in half drumsticks (0 to 20), or &minus;1 for a
-     * worker that does not hunger (D-0005). */
-    public record WorkerView(int entity, Component name, Component profession, int level, Component bed, Component job, byte need, byte hunger, boolean hasBed, boolean hasPost, Status status) implements CustomPacketPayload {
+     * worker that does not hunger (D-0005); {@code purse} its emeralds, or &minus;1 with the economy
+     * off (D-0006). */
+    public record WorkerView(int entity, Component name, Component profession, int level, Component bed, Component job, byte need, byte hunger, int purse, boolean hasBed, boolean hasPost, Status status) implements CustomPacketPayload {
         public static final Type<WorkerView> TYPE = new Type<>(Serfdom.id("worker_view"));
         public static final StreamCodec<RegistryFriendlyByteBuf, WorkerView> CODEC = StreamCodec.of((buf, v) -> {
             buf.writeVarInt(v.entity);
@@ -47,12 +48,13 @@ public final class Screens {
             ComponentSerialization.STREAM_CODEC.encode(buf, v.job);
             buf.writeByte(v.need);
             buf.writeByte(v.hunger);
+            buf.writeVarInt(v.purse + 1);
             buf.writeBoolean(v.hasBed);
             buf.writeBoolean(v.hasPost);
             buf.writeEnum(v.status);
         }, buf -> new WorkerView(buf.readVarInt(), ComponentSerialization.STREAM_CODEC.decode(buf), ComponentSerialization.STREAM_CODEC.decode(buf),
                 buf.readVarInt(), ComponentSerialization.STREAM_CODEC.decode(buf), ComponentSerialization.STREAM_CODEC.decode(buf),
-                buf.readByte(), buf.readByte(), buf.readBoolean(), buf.readBoolean(), buf.readEnum(Status.class)));
+                buf.readByte(), buf.readByte(), buf.readVarInt() - 1, buf.readBoolean(), buf.readBoolean(), buf.readEnum(Status.class)));
         @Override public Type<WorkerView> type() { return TYPE; }
     }
 
@@ -169,6 +171,7 @@ public final class Screens {
         }).orElse(none);
         return new WorkerView(worker.getId(), Workers.name(worker), profession, worker.getVillagerData().getLevel(), bed, job,
                 worker.getData(Serfdom.NEED), (byte) (Appetite.hungers(worker) ? Appetite.of(worker).hunger().halves() : -1),
+                com.chunkworks.serfdom.market.Purses.on() ? com.chunkworks.serfdom.market.Purses.emeralds(worker) : -1,
                 w.bed().isPresent(), w.post().isPresent(), status(worker, w));
     }
 

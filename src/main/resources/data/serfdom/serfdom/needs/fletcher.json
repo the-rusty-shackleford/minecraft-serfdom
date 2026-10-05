@@ -1,0 +1,4 @@
+{"profession": "minecraft:fletcher", "needs": [
+  {"name": "sticks", "items": ["minecraft:stick"], "keep": 16, "per_day": 2},
+  {"name": "flint", "items": ["minecraft:flint"], "keep": 4, "per_day": 0.5},
+  {"name": "feathers", "items": ["minecraft:feather"], "keep": 4, "per_day": 0.5}]}

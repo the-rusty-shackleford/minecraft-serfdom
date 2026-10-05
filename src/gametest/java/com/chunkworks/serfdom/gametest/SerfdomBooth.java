@@ -51,8 +51,11 @@ import org.slf4j.LoggerFactory;
  * arriving on the server. Then the capture: the chain held on a free farmer, the farmer taken and
  * cuffed, its Worker Screen; and four captives in the trailer, seen through its open doors and from
  * its side. Then (D-0004) armour, clothes, the robe rule, a child, a captive, an elytra, walking,
- * the trailer and the dressed Worker Screen; and (D-0005) a worker eating its breakfast, one
- * cooking at a smoker, and the Worker Screen's drumsticks. Every step also checks in code what it
+ * the trailer and the dressed Worker Screen; (D-0005) a worker eating its breakfast, one
+ * cooking at a smoker, and the Worker Screen's drumsticks; and (D-0006) the market: the bread
+ * stall's front and label, three stalls with a shopper each (a bargain, a head shake, a look at one
+ * emerald, a loaf carried home), the stall's screen and ledger, the Worker Screen's purse, and the
+ * trade screen's purse beside a sold-out trade. Every step also checks in code what it
  * can. This fixture never ships. */
 @EventBusSubscriber(modid = "serfdom_gametest", value = Dist.CLIENT)
 public final class SerfdomBooth {
@@ -66,6 +69,12 @@ public final class SerfdomBooth {
     private static int litSeen;
     private static final List<Integer> aboardIds = new ArrayList<>();
     private static BlockPos lot;
+    // D-0006: the market.
+    private static BlockPos marketLot;
+    private static final BlockPos[] STALLS = new BlockPos[3];
+    private static final int[] SHOPPERS = new int[3];
+    private static boolean bargainShot, shakeShot, brokeShot, carryShot;
+    private static int boughtSeen, turnedAt;
 
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if (!Boolean.getBoolean("serfdom.booth")) return;
@@ -559,12 +568,153 @@ public final class SerfdomBooth {
                     photo(mc, "36-worker-screen-hunger");
                     mc.setScreen(null);
                 }
-                case 1550 -> {
+                // ---- 4a: the market (D-0006) ----
+                case 1550 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    l.setDayTime(6000);
+                    marketLot = lot.offset(88, 0, 0);
+                    for (int x = -6; x <= 14; x++) for (int z = -5; z <= 14; z++) {
+                        l.setBlockAndUpdate(marketLot.offset(x, -1, z), Blocks.GRASS_BLOCK.defaultBlockState());
+                        for (int y = 0; y < 5; y++) l.setBlockAndUpdate(marketLot.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                    }
+                    var foot = Blocks.RED_BED.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH);
+                    // Beds to the north, three stalls facing them, the camera to the south looking back
+                    // north at the stalls' backs and the shoppers' faces.
+                    ItemStack[] sells = {new ItemStack(Items.BREAD), new ItemStack(Items.PAPER), new ItemStack(Items.CLAY_BALL)};
+                    int[][] offer = {{6, 1}, {1, 1}, {16, 2}};
+                    for (int i = 0; i < 3; i++) {
+                        var bed = marketLot.offset(4 * i, 0, -2);
+                        l.setBlockAndUpdate(bed.south(), foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.FOOT));
+                        l.setBlockAndUpdate(bed, foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.HEAD));
+                        STALLS[i] = marketLot.offset(4 * i, 0, 4);
+                        l.setBlockAndUpdate(STALLS[i], Serfdom.FOR_SALE.get().defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
+                        var stall = (com.chunkworks.serfdom.market.ForSaleBlockEntity) l.getBlockEntity(STALLS[i]);
+                        stall.claim(p.getUUID(), p.getGameProfile().getName());
+                        stall.setTemplate(sells[i]);
+                        stall.setQuantity(offer[i][0]);
+                        stall.setPrice(offer[i][1]);
+                        stall.stockContainer.setItem(0, sells[i].copyWithCount(32));
+                    }
+                    // The bread stall's front: its painted emerald, its sign, the loaf over it, its label.
+                    p.teleportTo(l, marketLot.getX() + 0.5, marketLot.getY(), marketLot.getZ() + 1.2, 0F, 16F);
+                    mc.execute(() -> mc.options.hideGui = true);
+                });
+                case 1575 -> {
+                    check(mc.level.getBlockEntity(STALLS[0]) instanceof com.chunkworks.serfdom.market.ForSaleBlockEntity s && s.template().is(Items.BREAD) && s.clientOpen(),
+                            "the client knows the bread stall sells, and is open");
+                    check(mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit && hit.getBlockPos().equals(STALLS[0]), "the camera looks at the bread stall: "
+                            + (mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit ? hit.getType() + " at " + hit.getBlockPos().toShortString() + ", the stall at " + STALLS[0].toShortString() : mc.hitResult));
+                    photo(mc, "37-stall-front");
+                    // South of the stalls, looking north at the middle one: its label shows.
+                    server(mc, p -> p.teleportTo(p.serverLevel(), marketLot.getX() + 4.5, marketLot.getY(), marketLot.getZ() + 8.5, 180F, 18F));
+                }
+                case 1590 -> {
+                    check(mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit && hit.getBlockPos().equals(STALLS[1]), "the camera looks at the paper stall: "
+                            + (mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit ? hit.getType() + " at " + hit.getBlockPos().toShortString() : mc.hitResult));
+                    photo(mc, "38-market");
+                    server(mc, p -> {
+                        var l = p.serverLevel();
+                        VillagerProfession[] trades = {VillagerProfession.FARMER, VillagerProfession.LIBRARIAN, VillagerProfession.MASON};
+                        int[] purses = {5, 5, 1};
+                        for (int i = 0; i < 3; i++) {
+                            var v = EntityType.VILLAGER.create(l);
+                            v.moveTo(marketLot.getX() + 4 * i + 0.5, marketLot.getY(), marketLot.getZ() + 1.5, 180F, 0F);
+                            v.setVillagerData(v.getVillagerData().setProfession(trades[i]).setLevel(2));
+                            v.setPersistenceRequired();
+                            l.addFreshEntity(v);
+                            var bed = marketLot.offset(4 * i, 0, -2);
+                            l.getPoiManager().take(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME), (t, pos) -> pos.equals(bed), bed, 1);
+                            v.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME, net.minecraft.core.GlobalPos.of(l.dimension(), bed));
+                            com.chunkworks.serfdom.market.Purses.set(v, new com.chunkworks.serfdom.market.Purses.Saved(
+                                    new com.chunkworks.serfdom.domain.Purse(purses[i], com.chunkworks.serfdom.domain.Purse.NEVER), com.chunkworks.serfdom.domain.Shopping.Day.NONE));
+                            // The farmer has no food at home; the others have, and want their trade's goods.
+                            if (i > 0) com.chunkworks.serfdom.market.Households.set(v, com.chunkworks.serfdom.domain.Household.EMPTY.add("minecraft:bread", 4));
+                            SHOPPERS[i] = v.getId();
+                        }
+                        l.setDayTime(com.chunkworks.serfdom.domain.Shopping.FREE_START + 100);
+                        p.teleportTo(l, marketLot.getX() + 4.5, marketLot.getY() + 0.4, marketLot.getZ() + 9.5, 180F, 16F);
+                    });
+                }
+                case 2300 -> {
+                    check(bargainShot, "a bargain was photographed");
+                    check(shakeShot, "a head shake was photographed");
+                    check(brokeShot, "a look at an emerald was photographed");
+                    check(carryShot, "a loaf carried home was photographed");
+                    mc.options.hideGui = false;
+                    server(mc, p -> {
+                        p.teleportTo(p.serverLevel(), marketLot.getX() + 0.5, marketLot.getY(), marketLot.getZ() + 7.5, 180F, 20F);
+                        com.chunkworks.serfdom.market.Stalls.open(p, (com.chunkworks.serfdom.market.ForSaleBlockEntity) p.serverLevel().getBlockEntity(STALLS[0]));
+                    });
+                }
+                case 2320 -> {
+                    var screen = screen(mc, com.chunkworks.serfdom.client.ForSaleScreen.class, "the bread stall's screen opens");
+                    check(screen.getMenu().quantity() == 6 && screen.getMenu().price() == 1, "six for one: " + screen.getMenu().quantity() + " for " + screen.getMenu().price());
+                    check(screen.getMenu().getSlot(com.chunkworks.serfdom.market.ForSaleMenu.SELLS).getItem().is(Items.BREAD), "the slot of the item sold shows bread");
+                    check(screen.getMenu().getSlot(com.chunkworks.serfdom.market.ForSaleMenu.PROCEEDS).getItem().is(Items.EMERALD), "the proceeds hold the farmer's emerald");
+                    photo(mc, "43-stall-screen");
+                    screen.showLedger(true);
+                }
+                case 2340 -> {
+                    var screen = screen(mc, com.chunkworks.serfdom.client.ForSaleScreen.class, "the stall's screen is still open");
+                    var days = com.chunkworks.serfdom.client.ForSaleScreen.daysShown();
+                    // The farmer's sale, and any other shopper's: the kitchen's butcher, with raw beef and no ready
+                    // food at home, may come over from 44 blocks off in its meeting hour.
+                    check(screen.ledgerShown() && !days.isEmpty() && days.getFirst().sold() >= 1 && days.getFirst().earned() == days.getFirst().sold(),
+                            "the ledger: the sales, an emerald each: " + days);
+                    photo(mc, "44-ledger");
+                    mc.setScreen(null);
+                    server(mc, p -> {
+                        var l = p.serverLevel();
+                        var w = EntityType.VILLAGER.create(l);
+                        w.moveTo(p.getX(), p.getY(), p.getZ() - 2.5, 0F, 0F);
+                        w.setVillagerData(w.getVillagerData().setProfession(VillagerProfession.FARMER).setLevel(2));
+                        w.setNoAi(true);
+                        w.setPersistenceRequired();
+                        l.addFreshEntity(w);
+                        Workers.hire(l, w, p, Optional.empty());
+                        com.chunkworks.serfdom.market.Purses.set(w, new com.chunkworks.serfdom.market.Purses.Saved(
+                                new com.chunkworks.serfdom.domain.Purse(23, com.chunkworks.serfdom.domain.Purse.NEVER), com.chunkworks.serfdom.domain.Shopping.Day.NONE));
+                        Screens.openWorker(p, w);
+                    });
+                }
+                case 2360 -> {
+                    var screen = screen(mc, WorkerScreen.class, "the worker's screen opens");
+                    check(screen.view() != null && screen.view().purse() == 23, "the purse row says 23: " + (screen.view() == null ? "no view" : screen.view().purse()));
+                    photo(mc, "45-worker-screen-purse");
+                    mc.setScreen(null);
+                    server(mc, p -> {
+                        var l = p.serverLevel();
+                        var d = EntityType.VILLAGER.create(l);
+                        d.moveTo(p.getX() + 2, p.getY(), p.getZ() - 1.5, 90F, 0F);
+                        d.setVillagerData(d.getVillagerData().setProfession(VillagerProfession.FARMER).setLevel(2));
+                        d.setNoAi(true);
+                        d.setPersistenceRequired();
+                        var offers = new net.minecraft.world.item.trading.MerchantOffers();
+                        offers.add(new net.minecraft.world.item.trading.MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.WHEAT, 20), new ItemStack(Items.EMERALD, 3), 16, 2, 0.05F));
+                        offers.add(new net.minecraft.world.item.trading.MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.EMERALD, 1), new ItemStack(Items.BREAD, 6), 16, 2, 0.05F));
+                        d.setOffers(offers);
+                        l.addFreshEntity(d);
+                        com.chunkworks.serfdom.market.Purses.set(d, new com.chunkworks.serfdom.market.Purses.Saved(
+                                new com.chunkworks.serfdom.domain.Purse(2, com.chunkworks.serfdom.domain.Purse.NEVER), com.chunkworks.serfdom.domain.Shopping.Day.NONE));
+                        d.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+                    });
+                }
+                case 2380 -> {
+                    var screen = screen(mc, net.minecraft.client.gui.screens.inventory.MerchantScreen.class, "the trade screen opens");
+                    var offers = screen.getMenu().getOffers();
+                    check(offers.size() == 2 && offers.get(0).isOutOfStock() && !offers.get(1).isOutOfStock(), "the client sees the wheat trade sold out and the bread trade open: "
+                            + offers.stream().map(o -> o.getCostA() + " for " + o.getResult() + (o.isOutOfStock() ? " sold out" : " open") + " (" + o.getUses() + "/" + o.getMaxUses() + ")").toList());
+                    check(com.chunkworks.serfdom.client.PurseLabel.shown() != null && com.chunkworks.serfdom.client.PurseLabel.shown().emeralds() == 2, "the purse shown: 2");
+                    photo(mc, "46-trade-purse");
+                    mc.setScreen(null);
+                }
+                case 2400 -> {
                     LOG.info("serfdom booth: COMPLETE");
                     mc.stop();
                 }
                 default -> {
                     if (tick > 1060 && tick < 1500) meals(mc);
+                    if (tick > 1595 && tick < 2300) market(mc);
                     if (tick > 905 && tick < 950) server(mc, p -> {
                         var v = p.serverLevel().getEntity(walker);
                         if (v != null) v.setPos(v.getX() + 0.12, v.getY(), v.getZ());
@@ -650,6 +800,42 @@ public final class SerfdomBooth {
         if (!cookShot && lit && tick >= litSeen + 10 && mc.level.getEntity(griller) instanceof Villager g && g.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(smokerAt)) < 9) {
             photo(mc, "35-cooking");
             cookShot = true;
+        }
+    }
+
+    /** effects: the market photographs (D-0006), each taken as the client first sees it: the farmer's
+     * bargain (its sparkles, a few ticks after the sale), the librarian's head shake at dear paper, the
+     * mason looking at its one emerald, and the farmer carrying its loaf home. */
+    private static void market(Minecraft mc) {
+        var a = mc.level.getEntity(SHOPPERS[0]) instanceof Villager v ? v : null;
+        var b = mc.level.getEntity(SHOPPERS[1]) instanceof Villager v ? v : null;
+        var c = mc.level.getEntity(SHOPPERS[2]) instanceof Villager v ? v : null;
+        if (a == null || b == null || c == null) return;
+        if (!bargainShot) {
+            if (boughtSeen == 0 && a.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND).is(Items.BREAD)) boughtSeen = tick;
+            if (boughtSeen > 0 && tick >= boughtSeen + 3) {
+                photo(mc, "39-bargain");
+                bargainShot = true;
+            }
+        }
+        if (!shakeShot && turnedAt == 0 && b.getUnhappyCounter() > 20) {
+            photo(mc, "40-too-pricey");
+            shakeShot = true;
+        }
+        if (!brokeShot && turnedAt == 0 && c.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND).is(Items.EMERALD)) {
+            photo(mc, "41-cant-afford");
+            brokeShot = true;
+        }
+        // The three reactions seen from the south, the camera goes behind the beds to meet the farmer
+        // coming home with its loaf.
+        if (bargainShot && shakeShot && brokeShot && turnedAt == 0) {
+            turnedAt = tick;
+            server(mc, p -> p.teleportTo(p.serverLevel(), marketLot.getX() + 0.5, marketLot.getY(), marketLot.getZ() - 5.5, 0F, 12F));
+        }
+        if (turnedAt > 0 && tick > turnedAt + 10 && !carryShot && a.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND).is(Items.BREAD)
+                && a.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(STALLS[0])) > 6.25) {
+            photo(mc, "42-carrying-home");
+            carryShot = true;
         }
     }
 

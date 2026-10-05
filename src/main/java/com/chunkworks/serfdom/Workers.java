@@ -299,6 +299,9 @@ public final class Workers {
         showNeed(villager);
     }
 
+    /** effects: the need the worker's shift is stuck on, if it is (D-0006: what it shops for). */
+    public static Optional<Need> shiftNeed(Villager villager) { return Optional.ofNullable(SHIFT_NEEDS.get(villager.getUUID())); }
+
     /** effects: the needs the worker has now. */
     public static Set<Need> needs(Villager villager) {
         var worker = of(villager);
@@ -343,6 +346,8 @@ public final class Workers {
         var hand = villager.getItemBySlot(EquipmentSlot.MAINHAND);
         if (hand.isEmpty() || !worker.owned()) return;
         villager.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        // A purchase only shown in its hand is in its basket (D-0006), not a tool.
+        if (com.chunkworks.serfdom.market.Baskets.shown(hand)) return;
         if (worker.tool().isEmpty()) villager.setData(Serfdom.WORKER, worker.withTool(hand));
         else villager.getInventory().addItem(hand);
     }

@@ -1,0 +1,1 @@
+{"profession": "minecraft:fisherman", "needs": [{"name": "rod", "items": ["minecraft:fishing_rod"], "keep": 1, "per_day": 0.1}]}

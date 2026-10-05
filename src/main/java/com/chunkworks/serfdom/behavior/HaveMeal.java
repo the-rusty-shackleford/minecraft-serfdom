@@ -44,7 +44,8 @@ import org.slf4j.Logger;
  * eats. It eats with the food in its hand, vanilla's eating sound and crumbs, a player's 1.6 seconds
  * a bite. It carries its meal in its hands, never in its own inventory, so vanilla's sharing of food
  * between villagers never sees it; what is left (a cooked dish not eaten, bowls) goes back to the
- * home chest at the end, or to the ground. When it has eaten all it wants, or finds nothing, it
+ * home chest at the end, or to the ground. With no food anywhere and an emerald in its purse, it
+ * walks to a stall near its bed and buys food to eat (D-0006). When it has eaten all it wants, or finds nothing, it
  * notes the meal ({@link Meals#after}) and turns back to its schedule. A dish left cooking when it
  * gives up (too slow, or the meal is cut short) stays in the station. */
 public final class HaveMeal extends Behavior<Villager> {
@@ -54,7 +55,7 @@ public final class HaveMeal extends Behavior<Villager> {
     private static final int WALK_LIMIT = 600, COOK_LIMIT = 1600, BITE = 32, POLL = 20;
     private static final double REACH = 2.5;
 
-    private enum Step { CHOOSE, WALK, EAT, COOK, DONE }
+    private enum Step { CHOOSE, WALK, EAT, COOK, QUEUE, DONE }
     private Step step = Step.CHOOSE;
     private BlockPos dest;
     private Runnable arrive;
@@ -70,6 +71,7 @@ public final class HaveMeal extends Behavior<Villager> {
     private Station kind;
     private String dish;
     private int expect, got;
+    private Optional<com.chunkworks.serfdom.market.Shoppers.Plan> buying = Optional.empty();
 
     public HaveMeal() { super(ImmutableMap.of(), 4800); }
 
@@ -82,6 +84,7 @@ public final class HaveMeal extends Behavior<Villager> {
     @Override protected void start(ServerLevel level, Villager worker, long gameTime) {
         ended = false;
         ate = false;
+        buying = Optional.empty();
         bite = ItemStack.EMPTY;
         hands.clearContent();
         Workers.stash(worker);
@@ -98,11 +101,14 @@ public final class HaveMeal extends Behavior<Villager> {
             case WALK -> walk(level, worker, now);
             case EAT -> eat(level, worker);
             case COOK -> cook(level, worker, now);
+            case QUEUE -> queue(level, worker, now);
             case DONE -> {}
         }
     }
 
     @Override protected void stop(ServerLevel level, Villager worker, long gameTime) {
+        buying.ifPresent(p -> { if (level.getBlockEntity(p.stall()) instanceof com.chunkworks.serfdom.market.ForSaleBlockEntity s) s.letGo(worker.getUUID()); });
+        buying = Optional.empty();
         if (!bite.isEmpty()) hands.addItem(bite);
         bite = ItemStack.EMPTY;
         worker.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
@@ -132,7 +138,7 @@ public final class HaveMeal extends Behavior<Villager> {
                 : new Menu.Facts(hunger, java.util.Map.of(), canteen.stream().map(p -> Storage.counts(level, p)).toList(),
                         Kitchen.foods(canteen.stream().flatMap(p -> Storage.counts(level, p).keySet().stream()).toList(), worker),
                         RecipeBook.rules(level, Kitchen.HEAT), Recipes.Rules.NONE, Kitchen.tableMeals());
-        var c = Menu.choose(facts);
+        var c = Menu.choose(facts.buying(mayBuy(level, worker)));
         if (TRACE) LOG.info("Serfdom trace: {} at hunger {} chooses {} {} {}", worker.getId(), hunger.points(), c.kind(), c.item(), c.rule().map(Recipes.Rule::id).orElse(""));
         switch (c.kind()) {
             case NOTHING -> end(level, worker);
@@ -144,7 +150,53 @@ public final class HaveMeal extends Behavior<Villager> {
                 walkTo(level, worker, chest.get(), now, () -> takeAndBite(level, worker, chest.get(), c.item(), facts));
             }
             case COOK -> fetch(level, worker, c, free, now);
+            case BUY -> buy(level, worker, now);
         }
+    }
+
+    // ---- buying (D-0006) ----------------------------------------------------------------------
+
+    /** effects: true iff the worker may buy food: the economy is on, it is not a captive, it holds an
+     * emerald and has a purchase left today. */
+    private static boolean mayBuy(ServerLevel level, Villager worker) {
+        if (!com.chunkworks.serfdom.market.Purses.on() || Workers.of(worker).captive()) return false;
+        var saved = com.chunkworks.serfdom.market.Purses.of(worker);
+        int perDay = com.chunkworks.serfdom.SerfdomConfig.SPEC.isLoaded() ? com.chunkworks.serfdom.SerfdomConfig.SALES_PER_DAY.get() : 3;
+        return saved.purse().emeralds() >= 1 && com.chunkworks.serfdom.domain.Shopping.salesLeft(saved.day(), level.getDayTime(), perDay) > 0;
+    }
+
+    /** effects: walks to the stall near its bed with the cheapest food it can afford, to buy enough to
+     * fill up; nothing found, the meal ends hungry. */
+    private void buy(ServerLevel level, Villager worker, long now) {
+        int short_ = (int) Math.ceil(com.chunkworks.serfdom.domain.Hunger.MAX - Appetite.of(worker).hunger().points());
+        if (short_ < 1) { end(level, worker); return; }
+        var want = new com.chunkworks.serfdom.domain.Shopping.Want(com.chunkworks.serfdom.domain.Household.FOOD, com.chunkworks.serfdom.market.Needs.readyFoods(level),
+                short_, com.chunkworks.serfdom.domain.Shopping.Unit.POINTS, com.chunkworks.serfdom.domain.Shopping.Dest.HOME);
+        buying = com.chunkworks.serfdom.market.Shoppers.choose(level, worker, List.of(want));
+        if (buying.isEmpty()) { end(level, worker); return; }
+        if (TRACE) LOG.info("Serfdom trace: {} goes to buy food at {}", worker.getId(), buying.get().stall().toShortString());
+        walkTo(level, worker, buying.get().stall(), now, () -> { step = Step.QUEUE; since = level.getGameTime(); });
+    }
+
+    /** effects: waits its turn at the stall and buys there, the food into its hands; it gives up after
+     * the shop's wait. */
+    private void queue(ServerLevel level, Villager worker, long now) {
+        var plan = buying.orElse(null);
+        if (plan == null || !(level.getBlockEntity(plan.stall()) instanceof com.chunkworks.serfdom.market.ForSaleBlockEntity stall)) { end(level, worker); return; }
+        worker.getLookControl().setLookAt(Vec3.atCenterOf(plan.stall()).add(0, 0.5, 0));
+        if (!stall.serve(worker.getUUID(), now)) {
+            if (now - since > GoShopping.QUEUE) end(level, worker);
+            return;
+        }
+        var visit = com.chunkworks.serfdom.market.Counter.visit(level, worker, stall, plan.want());
+        stall.letGo(worker.getUUID());
+        buying = Optional.empty();
+        if (visit.isEmpty() || !visit.get().outcome().reaction().bought()) { end(level, worker); return; }
+        for (var s : visit.get().goods()) {
+            var rest = hands.addItem(s);
+            if (!rest.isEmpty()) worker.spawnAtLocation(rest);
+        }
+        step = Step.CHOOSE;
     }
 
     private void takeAndBite(ServerLevel level, Villager worker, BlockPos from, String item, Menu.Facts facts) {

@@ -1,0 +1,15 @@
+{
+  "values": {
+    "minecraft:bone_meal": 0.1,
+    "minecraft:wooden_hoe": 0.5,
+    "minecraft:iron_hoe": 2,
+    "minecraft:golden_hoe": 1,
+    "minecraft:netherite_hoe": 24,
+    "minecraft:wooden_axe": 0.5,
+    "minecraft:golden_axe": 1.5,
+    "minecraft:netherite_axe": 24,
+    "minecraft:charcoal": 0.07,
+    "minecraft:fishing_rod": 1,
+    "minecraft:feather": 0.04
+  }
+}

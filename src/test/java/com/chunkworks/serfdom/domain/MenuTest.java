@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * <li>the dish: the one that fills most; a table meal and a table recipe that is not one; a pot's
  * meal; as many crafts as fill, capped at four and at what home holds; ingredients only from
  * home;</li>
+ * <li>buying (D-0006): allowed with no food anywhere, after raw food; not allowed; food there that
+ * would overshoot now; full, and just short of it;</li>
  * <li>a choice's rep invariant.</li>
  * </ul> */
 final class MenuTest {
@@ -114,11 +116,24 @@ final class MenuTest {
         assertEquals(Choice.NOTHING, choose(20, Map.of("bread", 5), List.of(), List.of()), "full");
     }
 
+    @Test void aWorkerThatMayBuyGoesToBuyOnlyWhenThereIsNoFoodAtAll() {
+        var nothing = facts(9, Map.of(), List.of(), List.of());
+        assertEquals(Choice.BUY, Menu.choose(nothing.buying(true)));
+        assertEquals(Choice.NOTHING, Menu.choose(nothing), "not allowed to buy");
+        assertEquals(Choice.eat(Kind.EAT_RAW, "beef", -1), Menu.choose(facts(9, Map.of("beef", 4), List.of(), List.of()).buying(true)), "raw food before buying");
+        assertEquals(Choice.NOTHING, Menu.choose(facts(17, Map.of("cooked_beef", 5), List.of(), List.of()).buying(true)), "food at home it would overshoot on: no trip");
+        assertEquals(Choice.NOTHING, Menu.choose(facts(17, Map.of(), List.of(Map.of("cooked_beef", 5)), List.of()).buying(true)), "nor in the canteen");
+        assertEquals(Choice.BUY, Menu.choose(facts(9, Map.of("golden_apple", 3, "wheat", 9), List.of(), List.of()).buying(true)), "refused food and ingredients are not food");
+        assertEquals(Choice.NOTHING, Menu.choose(facts(20, Map.of(), List.of(), List.of()).buying(true)), "full: no trip");
+        assertEquals(Choice.BUY, Menu.choose(facts(19.5, Map.of(), List.of(), List.of()).buying(true)), "just short of full, with nothing at all: it stocks up");
+    }
+
     @Test void aChoiceSaysOnlyWhatItsKindNeeds() {
         assertThrows(IllegalArgumentException.class, () -> new Choice(Kind.EAT_HOME, "", -1, Optional.empty(), 0, List.of()));
         assertThrows(IllegalArgumentException.class, () -> new Choice(Kind.EAT_POST, "bread", -1, Optional.empty(), 0, List.of()));
         assertThrows(IllegalArgumentException.class, () -> new Choice(Kind.COOK, "", -1, Optional.of(SMOKE_BEEF), 0, List.of("beef")));
         assertThrows(IllegalArgumentException.class, () -> new Choice(Kind.COOK, "", -1, Optional.of(SMOKE_BEEF), 1, List.of()));
         assertThrows(IllegalArgumentException.class, () -> new Choice(Kind.NOTHING, "", -1, Optional.empty(), 2, List.of()));
+        assertThrows(IllegalArgumentException.class, () -> new Choice(Kind.BUY, "bread", -1, Optional.empty(), 0, List.of()));
     }
 }

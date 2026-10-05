@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Rusty Shackleford and nfx. SPDX-License-Identifier: AGPL-3.0-or-later
 """Serfdom's pixel art, drawn by hand in code: the Work Post's wood and board, the chain lead,
-and the sheet of need icons. Run from the repo root:
+the sheet of need icons, and the For Sale block's counter, cloth and sign (D-0006). Run from the repo root:
 
     uv run --no-project --with pillow python devtools/art/art.py
 
@@ -19,6 +19,10 @@ OAK = ["#4b3720", "#5e4527", "#73552f", "#8a6a3c", "#a07d48", "#b69257"]
 IRON = ["#2b2c30", "#46484e", "#6b6e75", "#9a9da4", "#c4c7cc", "#e6e8ea"]
 INK = "#2a211b"
 CREAM = "#efe4c4"
+# Emerald greens, dark to light, for the For Sale block's painted gem.
+EMERALD = ["#0b5a2c", "#128a3e", "#17b04d", "#41d872", "#a6f2bf"]
+# The stall's cloth, a market green, dark to light.
+CLOTH = ["#1f4d26", "#2c6a34", "#378241", "#4a9a52"]
 
 
 def hexrgb(h, a=255):
@@ -225,6 +229,83 @@ def icon_chest_full(img, ox):
     put(img, ox + 7, 9, IRON[4]); put(img, ox + 8, 9, IRON[4])
 
 
+def counter_planks():
+    """The counter's boards: four planks laid flat, each with its own grain, a dark seam between."""
+    img = canvas()
+    for x in range(16):
+        for y in range(16):
+            plank = y // 4
+            if y % 4 == 3:
+                put(img, x, y, OAK[1])
+                continue
+            shade = 3 + ((x * 3 + plank * 5 + (y % 4)) % 7 == 0) - ((x + plank * 7) % 11 == 0)
+            put(img, x, y, OAK[max(1, min(5, shade))])
+    # A nail head at each plank's ends.
+    for plank in range(4):
+        put(img, 1, plank * 4 + 1, IRON[2]); put(img, 14, plank * 4 + 1, IRON[2])
+    return img
+
+
+def counter_front():
+    """The counter's front: its boards, with an emerald painted in the middle, the shop's sign to
+    anyone who walks by. The model shows rows 5 to 15 of it."""
+    img = counter_planks()
+    gem = [(7, 7), (8, 7), (6, 8), (7, 8), (8, 8), (9, 8), (5, 9), (6, 9), (7, 9), (8, 9), (9, 9), (10, 9),
+           (5, 10), (6, 10), (7, 10), (8, 10), (9, 10), (10, 10), (6, 11), (7, 11), (8, 11), (9, 11), (7, 12), (8, 12)]
+    for x, y in gem:
+        put(img, x, y, EMERALD[2])
+    for x, y in ((7, 7), (6, 8), (5, 9), (5, 10)):
+        put(img, x, y, EMERALD[3])
+    for x, y in ((8, 12), (9, 11), (10, 10), (10, 9)):
+        put(img, x, y, EMERALD[0])
+    for x, y in ((7, 12), (6, 11)):
+        put(img, x, y, EMERALD[1])
+    put(img, 7, 8, EMERALD[4]); put(img, 6, 9, EMERALD[4])
+    # A dark outline so the gem reads against the wood.
+    for x, y in ((7, 6), (8, 6), (6, 7), (9, 7), (5, 8), (10, 8), (4, 9), (11, 9), (4, 10), (11, 10), (5, 11), (10, 11), (6, 12), (9, 12), (7, 13), (8, 13)):
+        put(img, x, y, INK)
+    return img
+
+
+def counter_cloth():
+    """The cloth over the counter's top: a woven market green, a cream stripe along its front and back
+    edges. The model shows rows 2 to 13 of it."""
+    img = canvas()
+    for x in range(16):
+        for y in range(16):
+            weave = (x + y) % 2
+            shade = 2 if weave else 1
+            if (x // 2 + y // 2) % 4 == 0:
+                shade += 1
+            put(img, x, y, CLOTH[shade])
+    for x in range(16):
+        put(img, x, 3, CREAM); put(img, x, 12, CREAM)
+    return img
+
+
+def stall_sign():
+    """The sign board at the counter's back: cream, framed in dark oak, an emerald coin in its
+    middle and a dash of lettering either side. The model shows columns 2 to 13 and rows 0 to 4."""
+    img = counter_planks()
+    for x in range(2, 14):
+        for y in range(0, 5):
+            put(img, x, y, CREAM)
+    for x in range(2, 14):
+        put(img, x, 0, OAK[1]); put(img, x, 4, OAK[1])
+    for y in range(0, 5):
+        put(img, 2, y, OAK[1]); put(img, 13, y, OAK[1])
+    # The coin: a small round emerald.
+    for x, y in ((7, 1), (8, 1), (7, 3), (8, 3)):
+        put(img, x, y, EMERALD[1])
+    for x, y in ((6, 2), (9, 2)):
+        put(img, x, y, EMERALD[1])
+    put(img, 7, 2, EMERALD[3]); put(img, 8, 2, EMERALD[2])
+    # Lettering: a short dash either side of the coin.
+    for x in (4, 5, 10, 11):
+        put(img, x, 2, OAK[1])
+    return img
+
+
 def needs():
     """One 16x16 bubble per need, in the order Need declares them."""
     icons = [icon_bed, icon_hungry, icon_tool, icon_station, icon_fuel, icon_materials, icon_chest_full]
@@ -245,6 +326,10 @@ def main():
     board().save(TEX / "block/work_post_board.png")
     chain_lead().save(TEX / "item/chain_lead.png")
     needs().save(TEX / "gui/needs.png")
+    counter_planks().save(TEX / "block/for_sale_side.png")
+    counter_front().save(TEX / "block/for_sale_front.png")
+    counter_cloth().save(TEX / "block/for_sale_top.png")
+    stall_sign().save(TEX / "block/for_sale_sign.png")
     print("wrote", sorted(str(p.relative_to(ROOT)) for p in TEX.rglob("*.png")))
 
 

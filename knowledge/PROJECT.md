@@ -1,5 +1,14 @@
 # Serfdom
 
+**0.6.0 (phase 4a, the market, D-0006): built and gated on 2026-10-05. Not released.**
+Gate: `devtools/verification/release-0.6.0.md` (257 JUnit, 80 GameTests, booth 85 checks with 46
+photos, 37 of 37 mutations; jar sha1 `46040d9f`). Rusty's call: day-one purses full (every villager
+in the world before purses, and a newly generated village's people), newborns, cures and eggs at 4.
+Not seen by Rusty: photos 37 to 46 (the stall, the market, the reactions, the stall's screen and
+ledger, the purse on the Worker Screen and the trade screen). 0.6.0 carries 0.5.0 whole and ships in
+its place, with the same two siblings. 4b (climate, taste, wants, window shopping, villagers
+selling) is previewed in D-0006 and comes next, as 0.7.0.
+
 **0.5.0 (phase 3, hunger and meals, D-0005): built and gated on 2026-10-05. Not released.**
 Gate: `devtools/verification/release-0.5.0.md`. Rusty's call: the canteen (a worker eats from its
 home chest, then from its owner's posts' chests within 48 blocks of its bed). Not seen by Rusty:
@@ -29,7 +38,7 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | No remote yet |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md` (all in `devtools/verification/`) |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md` (all in `devtools/verification/`) |
 | Release | Only on Rusty's go, as a new jar in the pack, with Vanilla Wheels 1.11.0 and Village Law 1.1.0 |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
@@ -39,7 +48,8 @@ village ids) and Farmer's Delight 1.3 (tomatoes, rice).
 The villager overhaul in Rusty's spec (`~/Downloads/serfdom-mod-spec.md`), in five phases. Phase 2
 is split as phase 1 was: 2a, the capture, is [D-0003](decisions/D-0003.md); 2b, equipment slots
 and the armour layer, is [D-0004](decisions/D-0004.md). Phase 3, hunger and meals, is
-[D-0005](decisions/D-0005.md). Phase 1 is [D-0001](decisions/D-0001.md), split by Rusty into:
+[D-0005](decisions/D-0005.md). Phase 4, the market, is [D-0006](decisions/D-0006.md): 4a built,
+4b previewed. Phase 1 is [D-0001](decisions/D-0001.md), split by Rusty into:
 
 - **1a:** hiring, beds, the Work Post, woodcutting, farming, sorting, need icons, the Worker
   Screen, the chain lead, fence gates.
@@ -75,6 +85,9 @@ Each phase is previewed to Rusty before it is built.
     688×288).
   - 3: `Hunger` (points, drain, the work speed), `Meals` (when), `Menu` (what, bite by bite);
     `Pace` gained hunger, `Need` gained `HUNGRY`.
+  - 4a: `Purse` (cap, deposit, the start), `Till` (an offer as the purse sees it), `Values` (base
+    values), `Household` (a free villager's goods), `Stall`, `Verdict` (at the counter), `Shopping`
+    (who, when, which stall), `Ledger`; `Menu` gained the buy step, `WorkerLayout` the purse row.
 - `src/main`:
   - `Serfdom` (registries), `SerfdomConfig`.
   - `Worker` (the saved attachment) and `Workers` (state, hire, beds, posts, needs, the tool between
@@ -86,6 +99,13 @@ Each phase is previewed to Rusty before it is built.
   - 3: `Appetite` (the saved belly, `serfdom:belly`), `job/Kitchen` (home chest, canteen, free
     stations, food facts), `behavior/MealTime` (core: drain, turn to the meal),
     `behavior/HaveMeal` (the `serfdom:meal` activity), `Posts.near`.
+  - 4a: `market/` (`Market` the module's wiring; `Purses` the `serfdom:purse` attachment, the
+    start, trades and the deposit; `Prices` and `Needs` the data; `Households`; `Baskets` what a
+    shopper carries, `serfdom:basket`; the For Sale block, entity and menu; `Stalls` the POI lookup,
+    the owner lock and the ledger payload; `Shoppers` the plan; `Counter` the sale),
+    `behavior/ShopTime` (core, on free villagers' vanilla brains too) and `behavior/GoShopping`
+    (the `serfdom:shop` activity), `mixin/MerchantOfferMixin`, `client/ForSaleScreen`,
+    `ForSaleRenderer`, `PurseLabel`.
   - `behavior/`: `WorkShift`, `FollowOwner`, `KeepBed`, `OpenGates`, `WorkerNavigation`; 2a:
     `Stay`, `CaptiveNight`, `RunHome`.
   - `job/`: `Jobs` (data), `Woodcutting` + `WoodTask`, `Farming` + `CropTask`, `Storage`, `Tools`;
@@ -102,7 +122,8 @@ Each phase is previewed to Rusty before it is built.
     wear (`VillagerWearMixin`), the hat under a helmet (`VillagerModelMixin`, client).
 - `src/gametest`: `Yard` (fixtures), `Huts` (a village with a guard, from Village Law's tests),
   `WorkerGameTests`, `WorkshopGameTests`, `CaptiveGameTests`, `EquipmentGameTests`, `MealGameTests`,
-  `SerfdomBooth`, `TestMod`. Every batch but the meal batches runs with hunger off (`Yard.hour`).
+  `MarketGameTests`, `SerfdomBooth`, `TestMod`. Every batch but the meal batches runs with hunger
+  off, and every batch but the market's with the economy off (`Yard.hour`).
 - `devtools/art/art.py` draws every texture; `devtools/sound/work_song.py` renders the captives'
   work song to `run/work_song.wav`.
 
@@ -211,15 +232,36 @@ Each phase is previewed to Rusty before it is built.
 - **A screenshot taken the tick a block changes** shows the old block: the world's mesh is redrawn
   a few frames later.
 
+**Met in 4a:**
+- **A villager in a newly generated chunk does not join as loaded from disk.**
+  `addWorldGenChunkEntities` passes `false`; only a chunk read from its save passes `true`. The
+  preview said otherwise. NeoForge's `FinalizeSpawnEvent` names the spawn type instead (a coremod
+  sends every `Mob.finalizeSpawn` call through it, though the sources show plain calls); a cure
+  finalizes after the villager has joined.
+- **The offers packet copies the offers** (`offers.copy()` in its constructor) before it writes
+  them, and in single player hands the copy over unwritten. A transient flag on `MerchantOffer`
+  must go with the copy, or the client never sees it. GameTests that read the server's offers miss
+  this; build the packet and read it back.
+- **The GameTest server leaves earlier tests' areas standing,** stalls and villagers and all, and a
+  villager shops anywhere within 64 blocks of its bed. Shopping tests stand alone in their batch and
+  clear old stalls; every other batch runs with the economy off.
+- **`./gradlew build` runs the booth wherever `DISPLAY` points.** Run it with the Xephyr recipe's
+  variables; with the desktop's `:1` in the shell it opened on Rusty's screen.
+- **A hopper pushes its slots in order:** a test that a stall refuses a hopper's dirt must wait
+  until the hopper has tried it.
+- **Vanilla's trade lists can be read with a villager never added to the world,** but a treasure
+  map's listing searches the world for a structure: skip `VillagerTrades.TreasureMapForEmeralds`
+  (Villager API builds More Villagers' maps from the same class).
+
 ## Next
 
+- Rusty vets 0.6.0's photos 37 to 46.
+- Then 4b (D-0006's second half), as 0.7.0.
 - Rusty vets 0.5.0's photos 34 to 36 and the hungry icon in 01; 0.4.0's photos 18 to 33 (armour,
   clothes, the robe rule, the child, the trailer, the dressed Worker Screen); 0.3.0's photos 05 and 13 to 17 and the song (`run/work_song.wav`); and
   0.2.0's photos 07 to 12 and the "no station" icon in photo 01.
 - Then the release, on his go: a public repo for Serfdom, tags, GitHub releases; in the pack a new
   `add-file` for Serfdom and `--replaces` for Vanilla Wheels (1.10.1) and Village Law (1.0.0).
-- Phase 4 (wallets, trade between villagers, the For Sale block) is next: preview it first. It
-  also brings buying food with emeralds (not captives).
 - Not covered by any test: how the armour looks (the fit, the robe and the hat are judged by the
   booth's photos, and `FitTest` checks the boxes only); Farmer's Delight's placed skillet (left out, D-0002); a pack's much
   larger recipe book (the planner was timed on the gametest server's: 2.6 ms for the eight

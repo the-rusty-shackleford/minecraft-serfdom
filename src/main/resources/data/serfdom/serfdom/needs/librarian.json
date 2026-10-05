@@ -1,0 +1,3 @@
+{"profession": "minecraft:librarian", "needs": [
+  {"name": "paper", "items": ["minecraft:paper"], "keep": 8, "per_day": 1},
+  {"name": "books", "items": ["minecraft:book"], "keep": 2, "per_day": 0.25}]}

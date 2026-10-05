@@ -20,7 +20,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * profession and level, its status (hired, captive, in chains, escaping, a child), bed, job and
  * need, four buttons, and the player's inventory below, laid out as {@link WorkerLayout} says. The
  * menu opens first and the view follows it; until the view comes only the slots show. Hunger shows
- * as the HUD's ten drumsticks (D-0005). Assign job is
+ * as the HUD's ten drumsticks (D-0005), the purse as an emerald and a number (D-0006). Assign job is
  * greyed until the worker has a bed, and for a child; Clear job until it has a job. Assign bed and
  * Assign job close the screen so the player can click the bed or the post. Set free asks again
  * before it lets the worker go. */
@@ -146,6 +146,9 @@ public final class WorkerScreen extends AbstractContainerScreen<WorkerMenu> {
         y += WorkerLayout.LINE;
         if (view.hunger() < 0) row(g, y, "screen.serfdom.hunger", Component.translatable("screen.serfdom.hunger.none"), TEXT);
         else drumsticks(g, y, view.hunger());
+        y += WorkerLayout.LINE;
+        if (view.purse() < 0) row(g, y, "screen.serfdom.purse", Component.translatable("screen.serfdom.purse.none"), TEXT);
+        else purse(g, y, view.purse());
         var need = Need.of(view.need());
         row(g, y += WorkerLayout.LINE, "screen.serfdom.need", need.<Component>map(n -> Component.translatable("need.serfdom." + n.name().toLowerCase()))
                 .orElse(Component.translatable("screen.serfdom.need.none")), need.isPresent() ? NEED : TEXT);
@@ -160,6 +163,17 @@ public final class WorkerScreen extends AbstractContainerScreen<WorkerMenu> {
             if (halves >= 2 * i + 2) g.blitSprite(FOOD_FULL, x, y - 1, 9, 9);
             else if (halves == 2 * i + 1) g.blitSprite(FOOD_HALF, x, y - 1, 9, 9);
         }
+    }
+
+    /** effects: the purse row: an emerald and how many the worker holds (D-0006). */
+    private void purse(GuiGraphics g, int y, int emeralds) {
+        g.drawString(font, Component.translatable("screen.serfdom.purse"), WorkerLayout.DETAIL_X, y, LABEL);
+        g.pose().pushPose();
+        g.pose().translate(WorkerLayout.VALUE_X, y - 2, 0);
+        g.pose().scale(0.75F, 0.75F, 1F);
+        g.renderItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD), 0, 0);
+        g.pose().popPose();
+        g.drawString(font, Component.translatable("screen.serfdom.purse.value", emeralds), WorkerLayout.VALUE_X + 14, y, TEXT);
     }
 
     private void row(GuiGraphics g, int y, String label, Component value, int colour) {

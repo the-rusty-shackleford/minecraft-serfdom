@@ -30,8 +30,8 @@ import net.minecraft.world.entity.schedule.ScheduleBuilder;
 
 /** An owned villager's brain (D-0001, D-0003): vanilla's packages without the behaviours that claim
  * a workstation or a bed, take or reset a profession, or walk to a village, plus the worker's own
- * activities (work, follow, and for captives stay, held and escape), on a schedule that follows its
- * state. Free villagers keep vanilla's brain; so do owned children until they grow up. */
+ * activities (work, follow, and for captives stay, held and escape; the meal, D-0005; the shop,
+ * D-0006), on a schedule that follows its state. Free villagers keep vanilla's brain; so do owned children until they grow up. */
 public final class WorkerBrain {
     private static final float SPEED = 0.5F;
     private WorkerBrain() {}
@@ -103,6 +103,7 @@ public final class WorkerBrain {
         brain.addActivity(Serfdom.HELD.get(), held());
         brain.addActivity(Serfdom.ESCAPE.get(), escape());
         brain.addActivity(Serfdom.MEAL.get(), ImmutableList.of(Pair.of(5, new com.chunkworks.serfdom.behavior.HaveMeal()), look()));
+        brain.addActivity(Serfdom.SHOP.get(), com.chunkworks.serfdom.market.Shoppers.shop());
         brain.setCoreActivities(ImmutableSet.of(Activity.CORE));
         brain.setDefaultActivity(Activity.IDLE);
         brain.setActiveActivityIfPossible(Activity.IDLE);
@@ -129,7 +130,8 @@ public final class WorkerBrain {
                 Pair.of(10, AcquirePoi.create(h -> h.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14))),
                 Pair.of(10, new KeepBed()),
                 Pair.of(10, new CaptiveNight()),
-                Pair.of(10, new com.chunkworks.serfdom.behavior.MealTime()));
+                Pair.of(10, new com.chunkworks.serfdom.behavior.MealTime()),
+                Pair.of(10, new com.chunkworks.serfdom.behavior.ShopTime()));
     }
 
     /** Vanilla's rest package without the walk to the nearest free bed or the nearest village, and

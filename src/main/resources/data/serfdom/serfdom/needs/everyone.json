@@ -1,0 +1,1 @@
+{"profession": "*", "needs": [{"name": "food", "food": true, "keep": 4, "per_day": 2}]}

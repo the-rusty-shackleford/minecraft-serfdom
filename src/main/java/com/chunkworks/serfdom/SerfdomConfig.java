@@ -49,6 +49,27 @@ public final class SerfdomConfig {
     public static final ModConfigSpec.DoubleValue HUNGRY_FLOOR = B
             .comment("How fast a worker just short of starving works, as a fraction of its fed pace. Below half hunger its pace falls straight to this; at 0 it works no more.")
             .defineInRange("hungry_floor", 0.5, 0.05, 1.0);
+    public static final ModConfigSpec.BooleanValue ECONOMY = B
+            .comment("Villagers' purses, the For Sale block and shopping (D-0006). Off: villagers trade as vanilla's, nobody shops, and no deposit is paid.")
+            .define("economy", true);
+    public static final ModConfigSpec.IntValue PURSE_CAP = B
+            .comment("The most emeralds a villager's purse holds; what a trade brings in past it is lost.")
+            .defineInRange("purse_cap", com.chunkworks.serfdom.domain.Purse.CAP, 1, 4096);
+    public static final ModConfigSpec.IntValue DEPOSIT = B
+            .comment("Emeralds a free or hired villager under the line gets the first time it is seen in a morning.")
+            .defineInRange("deposit", com.chunkworks.serfdom.domain.Purse.DEPOSIT, 0, 64);
+    public static final ModConfigSpec.IntValue DEPOSIT_BELOW = B
+            .comment("A purse under this many emeralds gets the morning deposit; a villager born or cured starts with this many.")
+            .defineInRange("deposit_below", com.chunkworks.serfdom.domain.Purse.BELOW, 0, 4096);
+    public static final ModConfigSpec.IntValue SHOP_REACH = B
+            .comment("Blocks from its bed within which a villager shops at For Sale blocks.")
+            .defineInRange("shop_reach", 64, 8, 128);
+    public static final ModConfigSpec.IntValue SALES_PER_DAY = B
+            .comment("The most sales a villager buys in a day, its meals' among them.")
+            .defineInRange("sales_per_day", 3, 1, 64);
+    public static final ModConfigSpec.DoubleValue NEED_BONUS = B
+            .comment("What a villager will pay for something it needs, as a multiple of its base value.")
+            .defineInRange("need_bonus", 1.5, 0.1, 10.0);
     public static final ModConfigSpec.BooleanValue WORKERS = B
             .comment("The workers module: hiring, beds, posts and jobs. Off: owned villagers live as free ones and nobody can hire.")
             .define("workers", true);

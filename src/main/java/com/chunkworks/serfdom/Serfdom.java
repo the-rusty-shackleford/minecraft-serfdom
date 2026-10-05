@@ -37,7 +37,8 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
 /** Composition root (D-0001): the Work Post and the chain lead, a worker's saved state and its
  * synced need, the record of placed logs, a worker's activities, the Worker Screen's menu, the
  * server config, the job data, and the events that hire, assign, link and keep the post's storage
- * index. */
+ * index; and (D-0006) the For Sale block, its menu and point of interest, every villager's purse,
+ * household and basket, the shop activity, and the economy's listeners. */
 @Mod(Serfdom.ID)
 public final class Serfdom {
     public static final String ID = "serfdom";
@@ -48,6 +49,7 @@ public final class Serfdom {
     private static final DeferredRegister<Activity> ACTIVITIES = DeferredRegister.create(Registries.ACTIVITY, ID);
     private static final DeferredRegister<net.minecraft.sounds.SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, ID);
     private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, ID);
+    private static final DeferredRegister<net.minecraft.world.entity.ai.village.poi.PoiType> POIS = DeferredRegister.create(Registries.POINT_OF_INTEREST_TYPE, ID);
 
     public static final DeferredBlock<WorkPostBlock> WORK_POST = BLOCKS.registerBlock("work_post", WorkPostBlock::new,
             BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0F).sound(SoundType.WOOD).ignitedByLava().noOcclusion());
@@ -55,6 +57,17 @@ public final class Serfdom {
     public static final DeferredItem<ChainLead> CHAIN_LEAD = ITEMS.registerItem("chain_lead", ChainLead::new, new Item.Properties());
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WorkPostBlockEntity>> WORK_POST_ENTITY =
             BLOCK_ENTITIES.register("work_post", () -> BlockEntityType.Builder.of(WorkPostBlockEntity::new, WORK_POST.get()).build(null));
+
+    /** The For Sale block (D-0006): a counter that sells one item to villagers. */
+    public static final DeferredBlock<com.chunkworks.serfdom.market.ForSaleBlock> FOR_SALE = BLOCKS.registerBlock("for_sale", com.chunkworks.serfdom.market.ForSaleBlock::new,
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).ignitedByLava().noOcclusion());
+    public static final DeferredItem<BlockItem> FOR_SALE_ITEM = ITEMS.registerSimpleBlockItem(FOR_SALE);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<com.chunkworks.serfdom.market.ForSaleBlockEntity>> FOR_SALE_ENTITY =
+            BLOCK_ENTITIES.register("for_sale", () -> BlockEntityType.Builder.of(com.chunkworks.serfdom.market.ForSaleBlockEntity::new, FOR_SALE.get()).build(null));
+    /** Where villagers find For Sale blocks: the game's index of points of interest, never a scan. No
+     * villager takes a ticket on one. */
+    public static final DeferredHolder<net.minecraft.world.entity.ai.village.poi.PoiType, net.minecraft.world.entity.ai.village.poi.PoiType> FOR_SALE_POI = POIS.register("for_sale",
+            () -> new net.minecraft.world.entity.ai.village.poi.PoiType(com.google.common.collect.ImmutableSet.copyOf(FOR_SALE.get().getStateDefinition().getPossibleStates()), 0, 1));
 
     /** An owned villager's state; absent or {@link Worker#NONE} on a free villager. */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Worker>> WORKER = ATTACHMENTS.register("worker",
@@ -71,6 +84,17 @@ public final class Serfdom {
      * apart from its {@link Worker} record. */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Appetite.Belly>> BELLY = ATTACHMENTS.register("belly",
             () -> AttachmentType.builder(() -> Appetite.Belly.FULL).serialize(Appetite.Belly.CODEC).build());
+
+    /** Every villager's purse and shopping day (D-0006), saved with it. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<com.chunkworks.serfdom.market.Purses.Saved>> PURSE = ATTACHMENTS.register("purse",
+            () -> AttachmentType.builder(() -> com.chunkworks.serfdom.market.Purses.Saved.EMPTY).serialize(com.chunkworks.serfdom.market.Purses.Saved.CODEC).build());
+    /** A free villager's household (D-0006): what it bought and has at home. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<com.chunkworks.serfdom.domain.Household>> HOUSEHOLD = ATTACHMENTS.register("household",
+            () -> AttachmentType.builder(() -> com.chunkworks.serfdom.domain.Household.EMPTY).serialize(com.chunkworks.serfdom.market.Households.CODEC).build());
+    /** What a shopper carries home (D-0006), saved so a trip cut short loses nothing. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<com.chunkworks.serfdom.market.Baskets.Basket>> BASKET = ATTACHMENTS.register("basket",
+            () -> AttachmentType.builder(() -> new com.chunkworks.serfdom.market.Baskets.Basket(java.util.List.of(), com.chunkworks.serfdom.domain.Shopping.Dest.HOME))
+                    .serialize(com.chunkworks.serfdom.market.Baskets.Basket.CODEC, b -> !b.empty()).build());
 
     /** Whether the chain is on a villager (D-0003); synced to the players that see it, so their
      * game draws the cuffs and knows a click on the trailer is a load. Never saved: the worker's
@@ -92,6 +116,9 @@ public final class Serfdom {
     /** A worker's meal (D-0005): it takes over the worker's day as a panic does, and gives it back. */
     public static final DeferredHolder<Activity, Activity> MEAL = ACTIVITIES.register("meal", () -> new Activity("serfdom_meal"));
 
+    /** A shopping trip (D-0006): it takes over a villager's day as a meal does, and gives it back. */
+    public static final DeferredHolder<Activity, Activity> SHOP = ACTIVITIES.register("shop", () -> new Activity("serfdom_shop"));
+
     /** One note of a captive's work song: the villager's own hum, heard within eight blocks. */
     public static final DeferredHolder<net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundEvent> HUM = SOUNDS.register("captive.hum",
             () -> net.minecraft.sounds.SoundEvent.createFixedRangeEvent(id("captive.hum"), 8.0F));
@@ -99,6 +126,9 @@ public final class Serfdom {
     /** The Worker Screen's menu: the worker's four armour slots over the player's inventory (D-0004). */
     public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<WorkerMenu>> WORKER_MENU = MENUS.register("worker",
             () -> new net.minecraft.world.inventory.MenuType<>(WorkerMenu::new, net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
+    /** The For Sale block's menu (D-0006). */
+    public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<com.chunkworks.serfdom.market.ForSaleMenu>> FOR_SALE_MENU = MENUS.register("for_sale",
+            () -> new net.minecraft.world.inventory.MenuType<>(com.chunkworks.serfdom.market.ForSaleMenu::new, net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
 
     public static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(ID, path); }
 
@@ -111,12 +141,18 @@ public final class Serfdom {
         ACTIVITIES.register(bus);
         SOUNDS.register(bus);
         MENUS.register(bus);
+        POIS.register(bus);
         container.registerConfig(ModConfig.Type.SERVER, SerfdomConfig.SPEC);
         bus.addListener((BuildCreativeModeTabContentsEvent e) -> {
-            if (e.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) e.accept(WORK_POST_ITEM);
+            if (e.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) { e.accept(WORK_POST_ITEM); e.accept(FOR_SALE_ITEM); }
             if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) e.accept(CHAIN_LEAD);
         });
-        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("5")));
+        // "6": D-0006's purse, ledger and Worker Screen purse row.
+        bus.addListener((RegisterPayloadHandlersEvent e) -> {
+            var registrar = e.registrar("6");
+            Screens.register(registrar);
+            com.chunkworks.serfdom.market.Market.register(registrar);
+        });
         NeoForge.EVENT_BUS.addListener((AddReloadListenerEvent e) -> e.addListener(new Jobs()));
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> Hire.registerCommand(e.getDispatcher()));
         Hire.listen();
@@ -128,6 +164,7 @@ public final class Serfdom {
         Remedies.listen();
         com.chunkworks.serfdom.compat.LawCompat.listen();
         com.chunkworks.serfdom.compat.WheelsCompat.register();
+        com.chunkworks.serfdom.market.Market.listen(bus);
     }
 
     /** Professions no villager can be hired with. */

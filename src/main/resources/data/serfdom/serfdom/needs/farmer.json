@@ -1,0 +1,3 @@
+{"profession": "minecraft:farmer", "needs": [
+  {"name": "hoe", "tag": "minecraft:hoes", "keep": 1, "per_day": 0.125},
+  {"name": "bone_meal", "items": ["minecraft:bone_meal"], "keep": 8, "per_day": 1}]}

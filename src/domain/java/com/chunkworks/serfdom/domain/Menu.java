@@ -17,6 +17,9 @@ import java.util.Set;
  * <li>a dish it cooks from its home chest at a free station near home, as much as this meal needs
  * and at most {@link #MOST} at a time;</li>
  * <li>raw food from its home chest, when no free station can cook it;</li>
+ * <li>food bought at a stall, when it may buy (D-0006: not a captive, and it holds an emerald), is not
+ * full, and there is no food at all at home or in the canteen, not even one it would overshoot on
+ * now;</li>
  * <li>nothing: it goes hungry.</li>
  * </ol>
  * Food is anything that fills, unless it is refused (a harmful effect, or the refusal tag: golden
@@ -42,9 +45,10 @@ public final class Menu {
 
     /** The facts of one bite: how fed the worker is; what its home chest holds and what each of its
      * owner's posts near its bed holds, nearest first; what fills; every heat recipe, which says what
-     * food is still raw; the recipes of the free stations near home; and the crafting table's meals. */
+     * food is still raw; the recipes of the free stations near home; the crafting table's meals; and
+     * whether it may buy food (D-0006). */
     public record Facts(Hunger hunger, Map<String, Integer> home, List<Map<String, Integer>> posts, Map<String, Food> foods,
-                        Recipes.Rules heat, Recipes.Rules kitchen, Set<String> tableMeals) {
+                        Recipes.Rules heat, Recipes.Rules kitchen, Set<String> tableMeals, boolean mayBuy) {
         public Facts {
             Objects.requireNonNull(hunger);
             home = Map.copyOf(home);
@@ -54,16 +58,24 @@ public final class Menu {
             Objects.requireNonNull(kitchen);
             tableMeals = Set.copyOf(tableMeals);
         }
+        /** effects: the facts of a worker that may not buy. */
+        public Facts(Hunger hunger, Map<String, Integer> home, List<Map<String, Integer>> posts, Map<String, Food> foods,
+                     Recipes.Rules heat, Recipes.Rules kitchen, Set<String> tableMeals) {
+            this(hunger, home, posts, foods, heat, kitchen, tableMeals, false);
+        }
+        /** effects: these facts, the worker allowed to buy or not. */
+        public Facts buying(boolean may) { return new Facts(hunger, home, posts, foods, heat, kitchen, tableMeals, may); }
     }
 
-    public enum Kind { EAT_HOME, EAT_POST, COOK, EAT_RAW, NOTHING }
+    public enum Kind { EAT_HOME, EAT_POST, COOK, EAT_RAW, BUY, NOTHING }
 
     /** One bite: eat {@code item} from home, from post {@code post}, or raw; or cook {@code rule}
-     * {@code times} times with {@code picks} (one per cell) from home; or nothing.
+     * {@code times} times with {@code picks} (one per cell) from home; or go and buy food; or nothing.
      * RI: an eating choice names its item, and a post choice its post (&ge; 0); a cook choice names
-     * its rule, times &ge; 1 and one pick per cell; nothing names nothing. */
+     * its rule, times &ge; 1 and one pick per cell; buying and nothing name nothing. */
     public record Choice(Kind kind, String item, int post, Optional<Recipes.Rule> rule, int times, List<String> picks) {
         public static final Choice NOTHING = new Choice(Kind.NOTHING, "", -1, Optional.empty(), 0, List.of());
+        public static final Choice BUY = new Choice(Kind.BUY, "", -1, Optional.empty(), 0, List.of());
         public Choice {
             Objects.requireNonNull(kind);
             Objects.requireNonNull(item);
@@ -110,7 +122,15 @@ public final class Menu {
         var dish = dish(f);
         if (dish.isPresent()) return dish.get();
         var uncooked = plentiful(f.home(), f, false).filter(item -> f.kitchen().all().stream().noneMatch(r -> r.cells().stream().anyMatch(c -> c.contains(item))));
-        return uncooked.map(item -> Choice.eat(Kind.EAT_RAW, item, -1)).orElse(Choice.NOTHING);
+        if (uncooked.isPresent()) return Choice.eat(Kind.EAT_RAW, uncooked.get(), -1);
+        return f.mayBuy() && f.hunger().points() < Hunger.MAX && noFood(f) ? Choice.BUY : Choice.NOTHING;
+    }
+
+    /** effects: true iff neither home nor any post holds food the worker eats. */
+    private static boolean noFood(Facts f) {
+        for (var e : f.home().entrySet()) if (e.getValue() > 0 && edible(e.getKey(), f.foods())) return false;
+        for (var post : f.posts()) for (var e : post.entrySet()) if (e.getValue() > 0 && edible(e.getKey(), f.foods())) return false;
+        return true;
     }
 
     /** effects: the most plentiful food in {@code stock} that is ready (or, when not {@code ready},

@@ -6,13 +6,21 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Partitions: the screens it must fit (Rusty's 3440×1440 at GUI scale 5, the booth's 1280×720 at
- * scale 2) and one it cannot; every part inside the panel; every pair of parts apart; the wearing
+ * scale 2) and one it cannot; the seven detail rows (D-0006's purse) and the height they make; every
+ * part inside the panel; every pair of parts apart; the wearing
  * slots stacked; the inventory centred; a rectangle with no size refused. */
 final class WorkerLayoutTest {
     @Test void itFitsRustysScreenAtGuiScaleFiveAndTheBooths() {
         assertTrue(WorkerLayout.fits(3440 / 5, 1440 / 5), WorkerLayout.WIDTH + "×" + WorkerLayout.HEIGHT + " in 688×288");
         assertTrue(WorkerLayout.fits(1280 / 2, 720 / 2));
         assertFalse(WorkerLayout.fits(300, 200));
+    }
+
+    @Test void thePurseRowMakesSevenRowsAndThePanel250Tall() {
+        assertEquals(7, WorkerLayout.DETAIL_ROWS);
+        assertEquals(7 * WorkerLayout.LINE, WorkerLayout.details().h());
+        assertEquals(250, WorkerLayout.HEIGHT);
+        assertEquals(WorkerLayout.PAD, WorkerLayout.HEIGHT - (WorkerLayout.hotbar().y() + WorkerLayout.hotbar().h()) - 1, "a margin under the hotbar's frame");
     }
 
     @Test void everyPartLiesInsideThePanelAndApartFromTheOthers() {

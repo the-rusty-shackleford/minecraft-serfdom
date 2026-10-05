@@ -195,12 +195,18 @@ final class Yard {
      * running a late test found the day nearly over (a smith with 1077 ticks of shift left). Hunger
      * is off for the batch (D-0005): these batches test other rules, and most hold an hour inside
      * the breakfast window, where a worker would sit down to eat whatever food lies near its bed,
-     * the cook's counted stock among it. {@link #hourWithHunger} is the meal batches'. */
+     * the cook's counted stock among it. {@link #hourWithHunger} is the meal batches'. The economy is
+     * off too (D-0006): GameTest leaves earlier tests' areas standing, and a worker with an emerald and
+     * no food would walk off to a stall another batch left behind. {@link #economy} turns it on. */
     static void hour(net.minecraft.server.level.ServerLevel level, long time) {
         level.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DAYLIGHT).set(false, level.getServer());
         level.setDayTime(time);
         com.chunkworks.serfdom.SerfdomConfig.HUNGER.set(false);
+        com.chunkworks.serfdom.SerfdomConfig.ECONOMY.set(false);
     }
+
+    /** effects: the economy on, for the market's batches (D-0006). */
+    static void economy() { com.chunkworks.serfdom.SerfdomConfig.ECONOMY.set(true); }
 
     /** effects: the hour set and held, with hunger on. */
     static void hourWithHunger(net.minecraft.server.level.ServerLevel level, long time) {
