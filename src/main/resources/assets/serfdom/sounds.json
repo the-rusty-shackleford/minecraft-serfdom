@@ -1,0 +1,11 @@
+{
+  "captive.hum": {
+    "subtitle": "subtitles.serfdom.captive.hum",
+    "sounds": [
+      {
+        "name": "minecraft:mob/villager/idle2",
+        "attenuation_distance": 8
+      }
+    ]
+  }
+}

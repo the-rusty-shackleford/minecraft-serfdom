@@ -24,6 +24,16 @@ public final class DeedCompat {
     /** effects: the name of the owner of the village at {@code pos}, if somebody bought it. */
     public static Optional<String> owner(ServerLevel level, BlockPos pos) { return LOADED ? Inner.owner(level, pos) : Optional.empty(); }
 
+    /** A village found around a place: its id and its bounds. */
+    public record Found(String id, com.chunkworks.serfdom.domain.Area bounds) {}
+
+    /** How far from a village a capture may be and still be the village's, as the law reckons it. */
+    static final int NEAR = 16;
+
+    /** effects: the village a capture at {@code pos} is taken from (D-0003): the one there, else the
+     * nearest within {@link #NEAR} blocks, as Village Law places a crime; empty without Village Deed. */
+    public static Optional<Found> around(ServerLevel level, BlockPos pos) { return LOADED ? Inner.around(level, pos) : Optional.empty(); }
+
     private static final class Inner {
         static Optional<com.chunkworks.villagedeed.Claims.Claim> claim(ServerLevel level, BlockPos pos) {
             return com.chunkworks.villagedeed.api.VillageProviders.at(level, pos)
@@ -39,5 +49,14 @@ public final class DeedCompat {
             return com.chunkworks.villagedeed.api.VillageProviders.at(level, pos).map(v -> v.id().toString());
         }
         static Optional<String> owner(ServerLevel level, BlockPos pos) { return claim(level, pos).map(c -> c.ownerName()); }
+        static Optional<Found> around(ServerLevel level, BlockPos pos) {
+            return com.chunkworks.villagedeed.api.VillageProviders.at(level, pos)
+                    .or(() -> com.chunkworks.villagedeed.api.VillageProviders.near(level, pos, NEAR))
+                    .map(v -> {
+                        var b = v.bounds();
+                        return new Found(v.id().toString(), new com.chunkworks.serfdom.domain.Area(level.dimension().location().toString(),
+                                b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ()));
+                    });
+        }
     }
 }

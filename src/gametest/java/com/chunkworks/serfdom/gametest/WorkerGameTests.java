@@ -52,7 +52,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * <li>work: a natural oak felled whole beside a bare pillar and a player's build, replanted and
  * stored; ripe crops, unripe ones, a pumpkin, sorted into the chests by kind;</li>
  * <li>needs: no tool until an axe is stored; chests full until one is emptied;</li>
- * <li>the chain: on a worker and a free villager, breaking past ten blocks; vanilla's lead;</li>
+ * <li>the chain: on a worker and a free villager, snapping past ten blocks; vanilla's lead;</li>
  * <li>trades restocked at the post; a worker saved and loaded.</li>
  * </ul>
  * Tests that need an hour of the day have a batch of their own, set and held before it. */
@@ -364,13 +364,15 @@ public final class WorkerGameTests {
         }).thenSucceed();
     }
 
-    /** The chain lead leads a worker, used up; on a free villager it does nothing and is kept; past
-     * ten blocks it breaks and drops as a chain, never as a lead. Vanilla's lead fails on a worker. */
-    @GameTest(template = "yard", timeoutTicks = 200) public void theChainLeadsAWorkerAndDropsAsItself(GameTestHelper h) {
+    /** The chain cuffs a worker and leads it, used up; on a free villager it begins a capture's hold
+     * rather than leading it, and no chain is used until the hold is done; past ten blocks the chain
+     * snaps and the worker stands in its cuffs, nothing dropped, neither chain nor lead (D-0003).
+     * Vanilla's lead fails on a worker. */
+    @GameTest(template = "yard", timeoutTicks = 200) public void theChainCuffsAWorkerAndASnapLeavesTheCuffsOn(GameTestHelper h) {
         Yard.floor(h);
         var owner = Yard.player(h, 10, 12, "chainer", new ItemStack(Serfdom.CHAIN_LEAD.get(), 2));
         var worker = Yard.villager(h, 10, 10, VillagerProfession.FARMER, 1);
-        var free = Yard.villager(h, 14, 10, VillagerProfession.FARMER, 1);
+        var free = Yard.villager(h, 14, 10, VillagerProfession.FARMER, 2);
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> {
             Workers.hire(h.getLevel(), worker, owner, Optional.empty());
             owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.LEAD));
@@ -379,16 +381,18 @@ public final class WorkerGameTests {
             owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Serfdom.CHAIN_LEAD.get(), 2));
             Yard.use(owner, free);
             h.assertFalse(free.isLeashed(), "a free villager is not led");
-            h.assertTrue(owner.getMainHandItem().getCount() == 2, "the chain is kept");
+            h.assertTrue(owner.getMainHandItem().getCount() == 2, "the chain is kept while the hold begins");
+            owner.stopUsingItem();
             Yard.use(owner, worker);
-            h.assertTrue(worker.isLeashed() && worker.getLeashHolder() == owner, "the worker is led");
+            h.assertTrue(worker.isLeashed() && worker.getLeashHolder() == owner && Workers.of(worker).cuffed(), "the worker is cuffed and led");
             h.assertTrue(owner.getMainHandItem().getCount() == 1, "one chain used");
             var far = Yard.at(h, 30, 1, 30);
             owner.moveTo(far.getX() + 0.5, far.getY(), far.getZ() + 0.5);
         }).thenWaitUntil(() -> h.assertFalse(worker.isLeashed(), "broken past ten blocks")).thenExecute(() -> {
+            h.assertTrue(Workers.of(worker).cuffed(), "the cuffs stay on");
             var drops = h.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(worker.blockPosition()).inflate(4));
-            h.assertTrue(drops.stream().anyMatch(e -> e.getItem().is(Serfdom.CHAIN_LEAD.get())), "the chain dropped");
-            h.assertTrue(drops.stream().noneMatch(e -> e.getItem().is(Items.LEAD)), "no lead dropped");
+            h.assertTrue(drops.stream().noneMatch(e -> e.getItem().is(Serfdom.CHAIN_LEAD.get()) || e.getItem().is(Items.LEAD)), "nothing dropped: " + drops);
+            h.assertFalse(Workers.of(free).owned(), "the free villager's hold came to nothing");
         }).thenSucceed();
     }
 

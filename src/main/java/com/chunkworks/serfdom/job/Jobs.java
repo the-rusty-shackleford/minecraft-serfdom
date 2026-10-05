@@ -97,11 +97,14 @@ public final class Jobs extends SimpleJsonResourceReloadListener {
         return job.toolTag().map(t -> TagKey.create(Registries.ITEM, ResourceLocation.parse(t)));
     }
 
-    /** effects: the worker's speed at the job: {@link com.chunkworks.serfdom.domain.Pace#BONUS} when
-     * its profession is one the job favours in this game, else 1. */
+    /** effects: the worker's speed at the job ({@link com.chunkworks.serfdom.domain.Pace#speed}):
+     * the bonus when its profession is one the job favours in this game, slowed by the configured
+     * share when it is a captive (D-0003). */
     public static double speed(JobScript job, Villager worker) {
         var profession = BuiltInRegistries.VILLAGER_PROFESSION.getKey(worker.getVillagerData().getProfession());
-        return job.bonusIn(PROFESSIONS.get()).contains(String.valueOf(profession)) ? com.chunkworks.serfdom.domain.Pace.BONUS : 1.0;
+        boolean matching = job.bonusIn(PROFESSIONS.get()).contains(String.valueOf(profession));
+        return com.chunkworks.serfdom.domain.Pace.speed(matching, com.chunkworks.serfdom.Workers.of(worker).captive(),
+                com.chunkworks.serfdom.SerfdomConfig.CAPTIVE_SLOWDOWN.get());
     }
 
     /** The game's professions: the registry is frozen before any world loads. */

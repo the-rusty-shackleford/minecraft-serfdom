@@ -29,8 +29,12 @@ public final class Screens {
     static final double REACH = 8.0;
     private Screens() {}
 
+    /** What a worker is, as the Worker Screen says it (D-0003): hired or captive, a captive in chains or
+     * on its way home, or a child, which cannot take a post. */
+    public enum Status { HIRED, CAPTIVE, CUFFED, ESCAPING, CHILD }
+
     /** What the Worker Screen shows. */
-    public record WorkerView(int entity, Component name, Component profession, int level, Component bed, Component job, byte need, boolean hasBed, boolean hasPost) implements CustomPacketPayload {
+    public record WorkerView(int entity, Component name, Component profession, int level, Component bed, Component job, byte need, boolean hasBed, boolean hasPost, Status status) implements CustomPacketPayload {
         public static final Type<WorkerView> TYPE = new Type<>(Serfdom.id("worker_view"));
         public static final StreamCodec<RegistryFriendlyByteBuf, WorkerView> CODEC = StreamCodec.of((buf, v) -> {
             buf.writeVarInt(v.entity);
@@ -42,13 +46,14 @@ public final class Screens {
             buf.writeByte(v.need);
             buf.writeBoolean(v.hasBed);
             buf.writeBoolean(v.hasPost);
+            buf.writeEnum(v.status);
         }, buf -> new WorkerView(buf.readVarInt(), ComponentSerialization.STREAM_CODEC.decode(buf), ComponentSerialization.STREAM_CODEC.decode(buf),
                 buf.readVarInt(), ComponentSerialization.STREAM_CODEC.decode(buf), ComponentSerialization.STREAM_CODEC.decode(buf),
-                buf.readByte(), buf.readBoolean(), buf.readBoolean()));
+                buf.readByte(), buf.readBoolean(), buf.readBoolean(), buf.readEnum(Status.class)));
         @Override public Type<WorkerView> type() { return TYPE; }
     }
 
-    public enum WorkerButton { ASSIGN_BED, ASSIGN_JOB, CLEAR_JOB }
+    public enum WorkerButton { ASSIGN_BED, ASSIGN_JOB, CLEAR_JOB, SET_FREE }
 
     /** A Worker Screen button. */
     public record WorkerAction(int entity, WorkerButton button) implements CustomPacketPayload {
@@ -151,13 +156,23 @@ public final class Screens {
             return Component.translatable("screen.serfdom.job_at", name, p.pos().getX(), p.pos().getY(), p.pos().getZ());
         }).orElse(none);
         return new WorkerView(worker.getId(), Workers.name(worker), profession, worker.getVillagerData().getLevel(), bed, job,
-                worker.getData(Serfdom.NEED), w.bed().isPresent(), w.post().isPresent());
+                worker.getData(Serfdom.NEED), w.bed().isPresent(), w.post().isPresent(), status(worker, w));
+    }
+
+    /** effects: what the worker is, the first that applies: a child, in chains, on its way home, a
+     * captive, hired. */
+    static Status status(Villager villager, Worker w) {
+        if (villager.isBaby()) return Status.CHILD;
+        if (w.cuffed()) return Status.CUFFED;
+        if (w.escaping()) return Status.ESCAPING;
+        return w.captive() ? Status.CAPTIVE : Status.HIRED;
     }
 
     /** effects: a job's name: its translation, {@code job.<namespace>.<path>}. */
     public static Component jobName(ResourceLocation job) { return Component.translatable("job." + job.getNamespace() + "." + job.getPath()); }
 
-    static void pressed(ServerPlayer player, WorkerAction action) {
+    /** effects: a Worker Screen button the player pressed, checked again here. Public for the GameTests. */
+    public static void pressed(ServerPlayer player, WorkerAction action) {
         if (!(player.level().getEntity(action.entity()) instanceof Villager worker) || worker.distanceTo(player) > REACH) return;
         if (!Workers.of(worker).ownedBy(player.getUUID())) return;
         var level = player.serverLevel();
@@ -170,6 +185,14 @@ public final class Screens {
             case CLEAR_JOB -> {
                 Workers.clearJob(level, worker);
                 openWorker(player, worker);
+            }
+            case SET_FREE -> {
+                var name = Workers.name(worker);
+                // The owner's own chain comes back to them; only the law confiscates one.
+                if (Workers.of(worker).cuffed() && !player.getAbilities().instabuild)
+                    com.chunkworks.carried.api.Carried.giveOrDrop(player, new net.minecraft.world.item.ItemStack(Serfdom.CHAIN_LEAD.get()));
+                Workers.free(level, worker);
+                player.displayClientMessage(Component.translatable("message.serfdom.set_free", name).withStyle(ChatFormatting.GOLD), true);
             }
         }
     }

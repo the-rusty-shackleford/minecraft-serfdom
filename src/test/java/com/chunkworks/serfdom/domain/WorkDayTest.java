@@ -38,4 +38,28 @@ final class WorkDayTest {
         assertEquals(0, WorkDay.shiftLeft(18000));
         assertEquals(3000, WorkDay.shiftLeft(24000 * 3 + 5000));
     }
+
+    // The captive's day (D-0003). Partitions: each part's first and last tick; the hired worker's
+    // meeting hours, which a captive works through; a later day.
+    @Test void aCaptiveWorksThroughTheMeetingAndNeverMeets() {
+        assertEquals(IDLE, WorkDay.atCaptive(1999));
+        assertEquals(WORK, WorkDay.atCaptive(2000));
+        assertEquals(WORK, WorkDay.atCaptive(8000), "a hired worker meets at 8000; a captive works");
+        assertEquals(WORK, WorkDay.atCaptive(9999));
+        assertEquals(IDLE, WorkDay.atCaptive(10000));
+        assertEquals(IDLE, WorkDay.atCaptive(11999));
+        assertEquals(SLEEP, WorkDay.atCaptive(12000));
+        assertEquals(SLEEP, WorkDay.atCaptive(23999));
+        assertEquals(WORK, WorkDay.atCaptive(24000L * 5 + 9000));
+        for (long t = 0; t < WorkDay.DAY; t += 250) assertNotEquals(MEET, WorkDay.atCaptive(t), "never meets: " + t);
+    }
+    @Test void aCaptivesShiftRunsToTenThousand() {
+        assertEquals(8000, WorkDay.shiftLeft(2000, true));
+        assertEquals(2000, WorkDay.shiftLeft(8000, true), "still at work when a hired worker's shift is over");
+        assertEquals(1, WorkDay.shiftLeft(9999, true));
+        assertEquals(0, WorkDay.shiftLeft(10000, true));
+        assertEquals(0, WorkDay.shiftLeft(1999, true));
+        assertEquals(WorkDay.shiftLeft(5000), WorkDay.shiftLeft(5000, false), "a hired worker's is unchanged");
+        assertEquals(0, WorkDay.shiftLeft(8000, false));
+    }
 }

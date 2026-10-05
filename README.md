@@ -1,15 +1,16 @@
 # Serfdom
 
-Villagers you hire live and work at your base, for **Minecraft 1.21.1 / NeoForge 21.1.248**.
-Give a worker a bed and a Work Post, and it fells the trees or harvests the crops around the
-post, or cooks or smiths at the stations around it, and puts what it makes away in your chests.
+Villagers you hire, or take in chains, live and work at your base, for **Minecraft 1.21.1 /
+NeoForge 21.1.248**. Give a worker a bed and a Work Post, and it fells the trees or harvests the
+crops around the post, or cooks or smiths at the stations around it, and puts what it makes away
+in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is phase 1 of five, released as 0.2.0: woodcutting and farming (1a), cooking and the
-blacksmith (1b). The rest of the plan:
+This is 0.3.0: phase 1 (woodcutting and farming, cooking and the blacksmith) and phase 2a, the
+capture (D-0003). The rest of the plan:
 
-- **2:** capture with the chain, owners' rules and equipment.
+- **2b:** equipment slots and armour drawn on villagers.
 - **3:** hunger and cooking meals.
 - **4:** wallets, trade between villagers, and the For Sale block.
 - **5:** raids and defending the base.
@@ -24,26 +25,24 @@ blacksmith (1b). The rest of the plan:
    - In a village someone bought with Village Deed, only the owner and the players they trust can
      hire.
    - With an emerald in your hand, sneak-use is still Thief's gift.
-2. **Bring it home.** A hired villager without a bed follows you on foot. For a long trip, lead it
-   on the **chain lead** (a lead and a chain, shapeless).
-   - Right-click your worker with the chain to lead it, and again to let it go.
-   - Tie it to a fence like any lead.
-   - Pulled past ten blocks, the chain snaps and drops.
-   - A normal lead still does nothing to a villager.
+2. **Bring it home.** A hired villager without a bed follows you on foot. For a long trip, put it
+   in the **chain lead** (a lead and a chain, shapeless). See [The chain](#the-chain).
 3. **The Worker Screen.** Sneak and right-click your worker. It shows:
    - its profession and level;
    - its bed and its job;
    - what it needs, if anything.
 
-   It has three buttons:
+   It has four buttons:
    - **Assign bed:** then right-click a free bed within 30 seconds. The worker sleeps there from
      dusk, and no other villager takes that bed.
    - **Assign job:** then right-click a Work Post within 30 seconds. The post must be yours,
      within 48 blocks of the bed, and hold fewer than four workers. Assign job stays greyed out
      until the worker has a bed.
    - **Clear job:** the worker goes back to an ordinary villager's day at your base.
+   - **Set free** (click it twice): the worker is free again and walks to the nearest village. A
+     chain on it comes back to you; the tool it keeps drops where it stands.
 
-   A plain right-click still opens its trades. Its trades restock at its post, at most twice a
+   A plain right-click still opens its trades (not in chains). Its trades restock at its post, at most twice a
    day, as a villager's do at its workstation.
 4. **The Work Post** is a fence and a sign, shapeless. Place it, then right-click it to set:
    - **Job:** Woodcutting, Farming, Cooking or Blacksmith.
@@ -54,6 +53,82 @@ blacksmith (1b). The rest of the plan:
    - **Stock list** (cooking and blacksmith): what the workers keep in the chests. See below.
 
    Breaking the post sends its workers back to an ordinary day.
+
+### The chain
+
+The **chain lead** is the cuffs. A villager with the chain on it is **in chains**: it doesn't work,
+trade, wander or run away. It goes where whoever holds its chain leads it, and stands still when
+nobody does. You see the cuffs across its crossed wrists.
+
+| What you do | What happens |
+|---|---|
+| Right-click an owned villager with the chain | It is in chains and you lead it (one chain used). Anyone can, to move someone's worker. |
+| Right-click a villager in chains that nobody holds, empty-handed or with the chain | You take its chain. |
+| Right-click one you hold, as its owner | The chains come off and the chain comes back to you. |
+| Right-click one you hold, as anyone else | You let go. It stays in chains: only the owner takes them off. |
+| Pull it past ten blocks | The chain snaps from your hand. It stays in chains, standing there, nothing dropped. |
+| Right-click a fence while leading | It is tied there, as with any lead. |
+
+A normal lead still does nothing to a villager. A villager in chains that dies drops the chain.
+
+### Taking a captive
+
+**Hold right-click with the chain on a free villager for two seconds**, within two blocks,
+looking at it. It screams as you start and stands still while you hold. Let go, step away or look
+off it, and it slips free. When the two seconds are up it is your **captive**, in chains, on your
+chain.
+
+- Only a grown villager with a trade can be taken: not a nitwit, an unemployed villager or a
+  child. A villager that is already someone's is put in chains instead.
+- In a village someone bought with Village Deed, only the owner and the players they trust can
+  take its people, and for them it is **no crime**. Anyone else's chain is refused.
+- Captives cost nothing, but taking one is **Thief's heavy crime** where it stood:
+  - nobody but the captive saw: nothing more;
+  - other villagers saw: Thief's reputation hit with each of them;
+  - a guard saw: Village Law's summons. **Pay** the fine (15) and the guards free every villager
+    you took in that case and keep the chains. **Leave**, and you keep them; paying the debt
+    later frees nothing.
+  - Outside a village's buildings, Thief counts no crime at all.
+- A captive stays a captive. It is never a hired worker, though you can set it free.
+
+### Captives
+
+A captive out of chains takes a bed and a post like any worker, but:
+
+| Time | With a post | Without one |
+|---|---|---|
+| 0–2000 | Stands about where it is | Stands about where it is |
+| 2000–10000 | Works (through the hired workers' meeting) | Stands about |
+| 10000–12000 | Stands about | Stands about |
+| 12000 to dawn | Sleeps in its bed | Sleeps in its bed |
+
+- It walks and works **10% slower** (and a matching profession's 25% still counts: 1.25 × 0.9).
+- It doesn't follow you, meet, chat, trade with other villagers or have children.
+- It never summons iron golems or counts toward one, and its bed doesn't count toward a
+  village's cats.
+- At work it now and then **hums a phrase of a slow, low work song** in its own voice, about
+  eight blocks around, subtitled "Captive hums". Never idle, asleep or in chains.
+- **Escape.** Asleep in its bed at midnight, a captive rolls once a night: 5%. On a success it
+  gets up before two and walks toward the village it was taken from (or, if there was none, where
+  it was taken), day and night. Once inside that village it is free. Put it back in chains on the
+  way and the escape is over. A captive not loaded at midnight rolls nothing that night.
+
+### The trailer
+
+Vanilla Wheels' trailer carries captives as it carries animals:
+
+- Open its doors (crouch and right-click a door), then **right-click the trailer with an empty
+  hand** (or a lead or a chain) while you lead villagers in chains. Up to four board, nearest
+  first, standing in the trailer's bed and turning with it.
+- They ride in chains with nobody holding them.
+- To let everyone out, crouch and right-click the open doors with a **lead or a chain** in hand.
+  They step out behind, still in chains: take their chains to lead them on.
+
+### Children
+
+A child of two villagers you own (hired) is yours, hired, and keeps the bed it was born into. It
+can't take a job until it grows up. A child of your villager and someone else's, or a free one, is
+free.
 
 ### The worker's day
 
@@ -158,7 +233,10 @@ When a worker lacks something, an icon floats over its head. You see it within e
 Work starts again by itself once the need is met. The stock list says which row lacks what.
 
 Hired workers can summon iron golems as other villagers do: it takes five that have slept in the
-last day gossiping together, or three panicking at a zombie.
+last day gossiping together, or three panicking at a zombie. Captives never do (Rusty's call).
+
+A worker that dies, or is turned into a zombie villager, drops the tool it keeps, everything it
+carries and the chain on it. A cured one is a free villager.
 
 ## Server settings
 
@@ -172,6 +250,11 @@ last day gossiping together, or three panicking at a zombie.
 | `action_floor_ticks` | 10 | The shortest any action takes, so work stays visible. |
 | `leaves_per_tick` | 4 | How fast a felled tree's leaves are cleared. |
 | `craft_ticks` | 40 | Ticks one craft, cut or repair takes (a matching profession is 25% faster). |
+| `capture_ticks` | 40 | How long the chain is held on a villager to take it. |
+| `capture_reach` | 2.0 | How far from the villager the hold keeps going. |
+| `escape_chance` | 0.05 | A captive's chance each night of getting up and walking home. |
+| `captive_slowdown` | 0.10 | How much slower a captive walks and works. |
+| `humming` | true | Captives hum their work song at work. |
 | `workers` | true | The whole module: off, nobody can hire and owned villagers live as free ones. |
 
 Jobs are data: `data/<namespace>/serfdom/job/<id>.json`. A file names:
@@ -235,12 +318,36 @@ workshop's stations. The fuel a worker may burn is the item tag `#serfdom:fuel`.
   - **On their way:** what the post's loads will give, the other workers' claims, and what every
     worker carries all count toward a row.
   - **Tidy:** a workshop worker puts away everything it carries before it plans again.
-- **The chain lead** is vanilla's leash on a villager: vanilla refuses villagers a lead, so any
-  leash on one is the chain. It is drawn in iron, and a mixin makes the lead vanilla drops when a
-  leash breaks drop as the chain.
+- **The chain** (D-0003) is vanilla's leash on a villager, drawn in iron, plus the worker's saved
+  `cuffed` flag, synced to the client (`serfdom:cuffed`) for the cuffs layer and the trailer. The
+  leash is who holds the chain; the flag is whether it is on. When vanilla drops a leash's lead
+  (snapped, holder dead or gone), a mixin drops nothing for a villager in chains. The gestures are
+  a pure table (`domain/Chain`).
+- **The capture** (`Captures`, `domain/Capture`): the server starts the player's use of the chain
+  and judges the hold every server tick: present, still in use, within reach, looked at, done.
+  Then `Workers.capture` makes the captive, commits Thief's HEAVY crime through `ThiefCompat`, and
+  asks Village Law's `Cases.openHere` which case it joined; `Remedies` (overworld saved data,
+  `domain/Remedy`) owes the captive to that case, frees what a PAID case is owed (later, as it
+  loads, if it isn't loaded) and forgets what a FLED case was owed.
+- **Captives' brains**: three more activities, `stay` (idle within three blocks of where it began),
+  `held` (in chains: still) and `escape` (`RunHome`: sixteen-block legs toward home); a core
+  behaviour (`CaptiveNight`) rolls the night's escape (`domain/Escape`, seeded by the villager and
+  the day) and gets it up. The slowdown is a movement modifier, `serfdom:captive_pace`, and a
+  factor in `domain/Pace`.
+- **Golems and cats**: a mixin makes `Villager.wantsToSpawnGolem` false for a captive, which every
+  summons asks; another takes the loaded captives' beds off `CatSpawner`'s count.
+- **Children**: a mixin on `Villager.getBreedOffspring` makes a child of two of one owner's
+  villagers theirs (`domain/Birth`); one on `VillagerMakeLove.giveBedToChild` records its bed.
+- **The work song** (`domain/WorkSong`, `Humming`): four phrases in natural minor, each note
+  vanilla's villager `idle2` at the note's pitch (sound event `serfdom:captive.hum`, eight-block
+  range). `devtools/sound/work_song.py` renders them to `run/work_song.wav` to be heard.
+- **The trailer**: `compat/WheelsCompat` registers a cargo rule with Vanilla Wheels 1.11
+  (`api/CargoRules`, its D-0029): a villager in chains rides as cargo and loads while its chain's
+  holder clicks.
 
-Village Deed, Farmer's Delight and Ranged Weapons Mod are optional: without them there are no
-bought villages; no tomatoes, rice, pot, stove or board; and no weapons workbench. Carried, the
+Village Deed, Farmer's Delight, Ranged Weapons Mod, Thief, Village Law 1.1+ and Vanilla Wheels
+1.11+ are optional: without them there are no bought villages; no tomatoes, rice, pot, stove or
+board; no weapons workbench; no crime in a capture; no case for it; and no trailer. Carried, the
 inventory protocol, is nested in the jar.
 
 ## Building
@@ -255,7 +362,8 @@ This runs the JUnit domain tests, the GameTests and the photo booth.
   first.
 - The gametest server runs Village Deed from the sibling repo's `build/libs/villagedeed-2.2.0.jar`,
   Backpacks+ from `../minecraft-backpacks-plus/build/libs/backpacksplus-0.7.0.jar`, Ranged Weapons
-  Mod 2.12.0 and Metals and Materials 1.0.3 from their repos' `build/libs`, and Thief and
+  Mod 2.12.0, Metals and Materials 1.0.3, Village Law 1.1.0, Vanilla Wheels 1.11.0 and Trailer
+  2.4.0 from their repos' `build/libs` (build those first), and Thief, Guard Villagers and
   Farmer's Delight from Modrinth's maven.
 - The booth needs a display: the Xephyr recipe in the workspace's `AGENTS.local.md`. Without one,
   add `-PskipBooth`.

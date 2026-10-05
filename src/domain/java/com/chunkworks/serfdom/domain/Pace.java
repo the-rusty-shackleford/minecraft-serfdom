@@ -3,11 +3,21 @@ package com.chunkworks.serfdom.domain;
 
 /** How long a worker's action takes (D-0001): the time a player standing on the ground takes to
  * break the block with the same tool, never less than a floor that keeps work visible, divided by
- * the worker's speed (1.25 for a matching profession). */
+ * the worker's speed (1.25 for a matching profession, times 0.9 for a captive, D-0003). */
 public final class Pace {
     /** The speed of a worker whose profession matches its job. */
     public static final double BONUS = 1.25;
+    /** How much slower a captive works and walks than a hired worker, by default: 10% (the spec's §3). */
+    public static final double CAPTIVE_SLOWDOWN = 0.10;
     private Pace() {}
+
+    /** requires: 0 &le; captiveSlowdown &lt; 1.
+     * effects: a worker's speed at its job: {@link #BONUS} when its profession matches the job, and
+     * times (1 &minus; captiveSlowdown) when it is a captive; the two stack. */
+    public static double speed(boolean matching, boolean captive, double captiveSlowdown) {
+        if (!(captiveSlowdown >= 0 && captiveSlowdown < 1)) throw new IllegalArgumentException("captiveSlowdown " + captiveSlowdown);
+        return (matching ? BONUS : 1.0) * (captive ? 1.0 - captiveSlowdown : 1.0);
+    }
 
     /** effects: the destroy speed of a tool whose base speed is {@code speed} with Efficiency at
      * {@code efficiency}: vanilla adds level² + 1 to a tool that is faster than a hand. */

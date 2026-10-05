@@ -45,6 +45,7 @@ public final class Serfdom {
     private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, ID);
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS = DeferredRegister.create(NeoForgeRegistries.Keys.ATTACHMENT_TYPES, ID);
     private static final DeferredRegister<Activity> ACTIVITIES = DeferredRegister.create(Registries.ACTIVITY, ID);
+    private static final DeferredRegister<net.minecraft.sounds.SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, ID);
 
     public static final DeferredBlock<WorkPostBlock> WORK_POST = BLOCKS.registerBlock("work_post", WorkPostBlock::new,
             BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0F).sound(SoundType.WOOD).ignitedByLava().noOcclusion());
@@ -64,10 +65,26 @@ public final class Serfdom {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<LongOpenHashSet>> PLACED_LOGS = ATTACHMENTS.register("placed_logs",
             () -> AttachmentType.builder(() -> new LongOpenHashSet()).serialize(PlacedLogs.CODEC, s -> !s.isEmpty()).build());
 
+    /** Whether the chain is on a villager (D-0003); synced to the players that see it, so their
+     * game draws the cuffs and knows a click on the trailer is a load. Never saved: the worker's
+     * state is what is saved, and this is set from it as the villager joins. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> CUFFED = ATTACHMENTS.register("cuffed",
+            () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
+
     /** A worker's shift at its post. */
     public static final DeferredHolder<Activity, Activity> WORK = ACTIVITIES.register("work", () -> new Activity("serfdom_work"));
     /** A hired villager without a bed following its owner. */
     public static final DeferredHolder<Activity, Activity> FOLLOW = ACTIVITIES.register("follow", () -> new Activity("serfdom_follow"));
+    /** A captive's idle hours: standing about near where it is (D-0003). */
+    public static final DeferredHolder<Activity, Activity> STAY = ACTIVITIES.register("stay", () -> new Activity("serfdom_stay"));
+    /** A villager in chains: still, unless its chain's holder leads it. */
+    public static final DeferredHolder<Activity, Activity> HELD = ACTIVITIES.register("held", () -> new Activity("serfdom_held"));
+    /** A captive walking home to the village it was taken from. */
+    public static final DeferredHolder<Activity, Activity> ESCAPE = ACTIVITIES.register("escape", () -> new Activity("serfdom_escape"));
+
+    /** One note of a captive's work song: the villager's own hum, heard within eight blocks. */
+    public static final DeferredHolder<net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundEvent> HUM = SOUNDS.register("captive.hum",
+            () -> net.minecraft.sounds.SoundEvent.createFixedRangeEvent(id("captive.hum"), 8.0F));
 
     public static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(ID, path); }
 
@@ -78,12 +95,13 @@ public final class Serfdom {
         BLOCK_ENTITIES.register(bus);
         ATTACHMENTS.register(bus);
         ACTIVITIES.register(bus);
+        SOUNDS.register(bus);
         container.registerConfig(ModConfig.Type.SERVER, SerfdomConfig.SPEC);
         bus.addListener((BuildCreativeModeTabContentsEvent e) -> {
             if (e.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) e.accept(WORK_POST_ITEM);
             if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) e.accept(CHAIN_LEAD);
         });
-        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("2")));
+        bus.addListener((RegisterPayloadHandlersEvent e) -> Screens.register(e.registrar("3")));
         NeoForge.EVENT_BUS.addListener((AddReloadListenerEvent e) -> e.addListener(new Jobs()));
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> Hire.registerCommand(e.getDispatcher()));
         Hire.listen();
@@ -91,6 +109,10 @@ public final class Serfdom {
         Posts.listen();
         PlacedLogs.listen();
         Workers.listen();
+        Captures.listen();
+        Remedies.listen();
+        com.chunkworks.serfdom.compat.LawCompat.listen();
+        com.chunkworks.serfdom.compat.WheelsCompat.register();
     }
 
     /** Professions no villager can be hired with. */

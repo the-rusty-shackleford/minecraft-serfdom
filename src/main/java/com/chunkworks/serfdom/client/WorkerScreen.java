@@ -10,16 +10,18 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-/** The Worker Screen (D-0001): a plain panel with the worker's profession and level, its status,
- * bed, job and need, and three buttons. Assign job is greyed until the worker has a bed, Clear job
- * until it has a job. Assign bed and Assign job close the screen so the player can click the bed
- * or the post. */
+/** The Worker Screen (D-0001, D-0003): a plain panel with the worker's profession and level, its
+ * status (hired, captive, in chains, escaping, a child), bed, job and need, and four buttons. Assign
+ * job is greyed until the worker has a bed, and for a child; Clear job until it has a job. Assign
+ * bed and Assign job close the screen so the player can click the bed or the post. Set free asks
+ * again before it lets the worker go. */
 public final class WorkerScreen extends Screen {
     private static final int WIDTH = 236, PAD = 8, LINE = 11, BUTTON_W = 70, BUTTON_H = 20;
-    private static final int TITLE = 0xFFD37F, LABEL = 0xA0A0A0, TEXT = 0xE0E0E0, NEED = 0xFF7F7F;
+    private static final int TITLE = 0xFFD37F, LABEL = 0xA0A0A0, TEXT = 0xE0E0E0, NEED = 0xFF7F7F, CAPTIVE = 0xD8A060;
     private final Screens.WorkerView view;
     private int left, top, height;
-    private Button bed, job, clear;
+    private Button bed, job, clear, free;
+    private boolean sure;
 
     public WorkerScreen(Screens.WorkerView view) {
         super(view.name());
@@ -33,12 +35,21 @@ public final class WorkerScreen extends Screen {
     public Button bedButton() { return bed; }
     public Button jobButton() { return job; }
     public Button clearButton() { return clear; }
+    public Button freeButton() { return free; }
 
     @Override protected void init() {
-        height = PAD + LINE + 4 + 5 * LINE + 6 + BUTTON_H + PAD;
+        height = PAD + LINE + 4 + 5 * LINE + 6 + BUTTON_H + 4 + BUTTON_H + PAD;
         left = (width - WIDTH) / 2;
         top = (super.height - height) / 2;
-        int y = top + height - PAD - BUTTON_H;
+        int y = top + height - PAD - 2 * BUTTON_H - 4;
+        free = addRenderableWidget(Button.builder(Component.translatable("screen.serfdom.set_free"), b -> {
+                    if (!sure) {
+                        sure = true;
+                        b.setMessage(Component.translatable("screen.serfdom.set_free.sure"));
+                        return;
+                    }
+                    press(Screens.WorkerButton.SET_FREE, true);
+                }).bounds(left + WIDTH - PAD - BUTTON_W, y + BUTTON_H + 4, BUTTON_W, BUTTON_H).build());
         int gap = (WIDTH - 2 * PAD - 3 * BUTTON_W) / 2;
         bed = addRenderableWidget(Button.builder(Component.translatable("screen.serfdom.assign_bed"), b -> press(Screens.WorkerButton.ASSIGN_BED, true))
                 .bounds(left + PAD, y, BUTTON_W, BUTTON_H).build());
@@ -46,7 +57,7 @@ public final class WorkerScreen extends Screen {
                 .bounds(left + PAD + BUTTON_W + gap, y, BUTTON_W, BUTTON_H).build());
         clear = addRenderableWidget(Button.builder(Component.translatable("screen.serfdom.clear_job"), b -> press(Screens.WorkerButton.CLEAR_JOB, false))
                 .bounds(left + PAD + 2 * (BUTTON_W + gap), y, BUTTON_W, BUTTON_H).build());
-        job.active = view.hasBed();
+        job.active = view.hasBed() && view.status() != Screens.Status.CHILD;
         clear.active = view.hasPost();
     }
 
@@ -61,7 +72,9 @@ public final class WorkerScreen extends Screen {
         g.drawString(font, view.name(), left + PAD, y, TITLE);
         y += LINE + 4;
         row(g, y, "screen.serfdom.profession", Component.translatable("screen.serfdom.level", view.profession(), view.level()), TEXT);
-        row(g, y += LINE, "screen.serfdom.status", Component.translatable("screen.serfdom.hired"), TEXT);
+        var status = view.status();
+        row(g, y += LINE, "screen.serfdom.status", Component.translatable("screen.serfdom.status." + status.name().toLowerCase(java.util.Locale.ROOT)),
+                status == Screens.Status.HIRED || status == Screens.Status.CHILD ? TEXT : CAPTIVE);
         row(g, y += LINE, "screen.serfdom.bed", view.bed(), TEXT);
         row(g, y += LINE, "screen.serfdom.job", view.job(), TEXT);
         var need = Need.of(view.need());

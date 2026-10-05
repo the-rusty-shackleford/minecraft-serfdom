@@ -25,6 +25,21 @@ public final class SerfdomConfig {
     public static final ModConfigSpec.IntValue CRAFT_TICKS = B
             .comment("Ticks one craft, cut or repair at a workshop station takes a cook or a blacksmith (D-0002); a matching profession is 25% faster.")
             .defineInRange("craft_ticks", 40, 1, 1200);
+    public static final ModConfigSpec.IntValue CAPTURE_TICKS = B
+            .comment("Ticks a player holds the chain on a free villager to take it (D-0003).")
+            .defineInRange("capture_ticks", com.chunkworks.serfdom.domain.Capture.HOLD, 1, 1200);
+    public static final ModConfigSpec.DoubleValue CAPTURE_REACH = B
+            .comment("Blocks from the player to the villager within which the hold keeps going.")
+            .defineInRange("capture_reach", com.chunkworks.serfdom.domain.Capture.REACH, 0.5, 6.0);
+    public static final ModConfigSpec.DoubleValue ESCAPE_CHANCE = B
+            .comment("The chance a captive asleep in its bed at midnight gets up and walks home, once a night.")
+            .defineInRange("escape_chance", com.chunkworks.serfdom.domain.Escape.CHANCE, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue CAPTIVE_SLOWDOWN = B
+            .comment("How much slower a captive walks and works than a hired worker, as a fraction.")
+            .defineInRange("captive_slowdown", com.chunkworks.serfdom.domain.Pace.CAPTIVE_SLOWDOWN, 0.0, 0.9);
+    public static final ModConfigSpec.BooleanValue HUMMING = B
+            .comment("Captives at work now and then hum a phrase of their work song.")
+            .define("humming", true);
     public static final ModConfigSpec.BooleanValue WORKERS = B
             .comment("The workers module: hiring, beds, posts and jobs. Off: owned villagers live as free ones and nobody can hire.")
             .define("workers", true);

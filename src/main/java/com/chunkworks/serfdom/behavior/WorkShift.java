@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 Rusty Shackleford and nfx. SPDX-License-Identifier: AGPL-3.0-or-later */
 package com.chunkworks.serfdom.behavior;
 
+import com.chunkworks.serfdom.Humming;
 import com.chunkworks.serfdom.Serfdom;
 import com.chunkworks.serfdom.Workers;
 import com.chunkworks.serfdom.domain.JobScript;
@@ -75,6 +76,7 @@ public final class WorkShift extends Behavior<Villager> {
         arrive = null;
         mode = Mode.PLAN;
         worker.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+        Humming.stop(worker, gameTime);
         Workers.stash(worker);
         Workers.shiftNeed(worker, Optional.empty());
     }
@@ -85,6 +87,10 @@ public final class WorkShift extends Behavior<Villager> {
         if (post.isEmpty()) return;
         var job = Jobs.get(post.get().job());
         if (job.isEmpty()) { Workers.shiftNeed(worker, Optional.empty()); idle(worker, post.get(), now); return; }
+        // A captive's song (D-0003): begun at a work action, carried through the walks and the plans
+        // between actions, ended by waiting with nothing to do.
+        if (mode == Mode.WAIT) Humming.stop(worker, now);
+        else Humming.tick(level, worker, now, mode == Mode.WORK);
         switch (mode) {
             case WAIT -> { if (now >= waitUntil) mode = Mode.PLAN; }
             case WALK -> walk(level, worker, now);
@@ -117,7 +123,7 @@ public final class WorkShift extends Behavior<Villager> {
         for (int i = 0; i < carried.getContainerSize(); i++) if (carried.getItem(i).isEmpty()) { noSlot = false; break; }
         boolean isFull = full || noSlot;
         boolean tidy = job.target() == JobScript.Target.WORKSHOP;
-        int left = WorkDay.shiftLeft(level.getDayTime());
+        int left = WorkDay.shiftLeft(level.getDayTime(), Workers.of(worker).captive());
         boolean wantsRoom = carrying && (isFull || tidy || left <= Shift.WIND_DOWN);
         boolean wantsTool = tag.isPresent() && !holds;
         var facts = new Shift.Facts(left, carrying, isFull, tag.isPresent(), holds,

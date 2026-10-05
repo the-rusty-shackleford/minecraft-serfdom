@@ -6,7 +6,7 @@ modId="serfdom"
 version="${version}"
 displayName="Serfdom"
 authors="Rusty Shackleford and nfx"
-description='''Villagers you hire live and work at your base. Give a worker a bed and a Work Post, and it cuts down the trees or harvests the crops around the post and sorts what it gathers into your chests.'''
+description='''Villagers you hire or take in chains live and work at your base. Give a worker a bed and a Work Post, and it cuts down the trees, harvests the crops, cooks or smiths around the post and sorts what it makes into your chests. A captive works longer and slower, hums a work song, and now and then slips away home at night.'''
 [[mixins]]
 config="serfdom.mixins.json"
 [[dependencies.serfdom]]
@@ -31,5 +31,23 @@ side="BOTH"
 modId="farmersdelight"
 type="optional"
 versionRange="*"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.serfdom]]
+modId="thief"
+type="optional"
+versionRange="[1.2,)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.serfdom]]
+modId="villagelaw"
+type="optional"
+versionRange="[1.1,)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.serfdom]]
+modId="vanillawheels"
+type="optional"
+versionRange="[1.11,)"
 ordering="AFTER"
 side="BOTH"

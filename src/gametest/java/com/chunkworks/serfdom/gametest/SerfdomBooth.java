@@ -41,20 +41,23 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** The booth (D-0001, D-0002), silent, software-rendered, graded by eye from its photographs: a
- * Work Post facing the camera with its outline on and six workers in a row behind it, each showing
- * one need; the Worker Screen of the first; the post's screen, with a click on [+] that the server
- * takes; a worker on the chain lead; the post and the chain in the inventory. Then a smithy and a
- * kitchen, each a post among its stations: the blacksmith's post screen and stock list (a row
- * stocked, one short, one wanting a smithing table), the cook's (one row being made, one without
- * fuel, one without a knife), and the picker searched and clicked, the row arriving on the server.
- * Every step also checks in code what it can. This fixture never ships. */
+/** The booth (D-0001, D-0002, D-0003), silent, software-rendered, graded by eye from its
+ * photographs: a Work Post facing the camera with its outline on and six workers in a row behind
+ * it, each showing one need; the Worker Screen of the first; the post's screen, with a click on [+]
+ * that the server takes; a worker in chains on the chain lead; the post and the chain in the
+ * inventory. Then a smithy and a kitchen, each a post among its stations: the blacksmith's post
+ * screen and stock list (a row stocked, one short, one wanting a smithing table), the cook's (one row
+ * being made, one without fuel, one without a knife), and the picker searched and clicked, the row
+ * arriving on the server. Then the capture: the chain held on a free farmer, the farmer taken and
+ * cuffed, its Worker Screen; and four captives in the trailer, seen through its open doors and from
+ * its side. Every step also checks in code what it can. This fixture never ships. */
 @EventBusSubscriber(modid = "serfdom_gametest", value = Dist.CLIENT)
 public final class SerfdomBooth {
     private static final Logger LOG = LoggerFactory.getLogger("Serfdom booth");
     private static int tick;
     private static final List<Integer> workers = new ArrayList<>();
-    private static BlockPos post, smithy, kitchen;
+    private static BlockPos post, smithy, kitchen, capture;
+    private static int captive, trailerId;
 
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if (!Boolean.getBoolean("serfdom.booth")) return;
@@ -130,13 +133,14 @@ public final class SerfdomBooth {
                     server(mc, p -> {
                         var v = (Villager) p.serverLevel().getEntity(workers.get(2));
                         v.moveTo(p.getX() + 2.5, p.getY(), p.getZ() + 4.0, 200F, 0F);
+                        Workers.set(p.serverLevel(), v, Workers.of(v).withCuffs(true));
                         v.setLeashedTo(p, true);
                         p.teleportTo(p.serverLevel(), p.getX(), p.getY(), p.getZ(), -30F, 20F);
                     });
                 }
                 case 150 -> {
                     var v = mc.level.getEntity(workers.get(2));
-                    check(v instanceof Villager villager && villager.isLeashed(), "the client sees the worker on the chain");
+                    check(v instanceof Villager villager && villager.isLeashed() && Workers.cuffed(villager), "the client sees the worker in chains, on the chain");
                     photo(mc, "05-chain");
                     server(mc, p -> {
                         p.getInventory().setItem(9, new ItemStack(Serfdom.WORK_POST_ITEM.get(), 3));
@@ -242,7 +246,91 @@ public final class SerfdomBooth {
                     photo(mc, "12-kitchen-stock-added");
                     mc.setScreen(null);
                 }
-                case 420 -> {
+                case 420 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    var base = BlockPos.containing(p.getX(), p.getY(), p.getZ()).offset(40, 0, 0);
+                    for (int x = -12; x <= 12; x++) for (int z = -12; z <= 12; z++) {
+                        l.setBlockAndUpdate(base.offset(x, -1, z), Blocks.GRASS_BLOCK.defaultBlockState());
+                        for (int y = 0; y < 5; y++) l.setBlockAndUpdate(base.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                    }
+                    var v = EntityType.VILLAGER.create(l);
+                    v.moveTo(base.getX() + 0.5, base.getY(), base.getZ() + 2.0, 180F, 0F);
+                    v.setYHeadRot(180F);
+                    v.setYBodyRot(180F);
+                    v.setVillagerData(v.getVillagerData().setProfession(VillagerProfession.FARMER).setLevel(2));
+                    v.setNoAi(true);
+                    l.addFreshEntity(v);
+                    captive = v.getId();
+                    p.getInventory().clearContent();
+                    p.getInventory().setItem(0, new ItemStack(Serfdom.CHAIN_LEAD.get(), 2));
+                    p.getInventory().selected = 0;
+                    // Level and as far back as the hold's reach allows, so the whole villager is in view.
+                    p.teleportTo(l, base.getX() + 0.5, base.getY(), base.getZ() + 0.3, 0F, 4F);
+                    capture = base;
+                });
+                case 440 -> {
+                    // The use key held down, as a player holds it through the capture.
+                    mc.options.keyUse.setDown(true);
+                    server(mc, p -> p.interactOn(p.serverLevel().getEntity(captive), net.minecraft.world.InteractionHand.MAIN_HAND));
+                }
+                case 460 -> {
+                    server(mc, p -> check(com.chunkworks.serfdom.Captures.holding(p, (Villager) p.serverLevel().getEntity(captive)), "the chain is held on the farmer"));
+                    check(mc.player.isUsingItem(), "the client draws the chain");
+                    photo(mc, "13-capture-hold");
+                }
+                case 500 -> {
+                    mc.options.keyUse.setDown(false);
+                    server(mc, p -> {
+                        var w = Workers.of((Villager) p.serverLevel().getEntity(captive));
+                        check(w.captive() && w.cuffed() && w.ownedBy(p.getUUID()), "the farmer is the player's captive, in chains: " + w);
+                    });
+                    var v = mc.level.getEntity(captive);
+                    check(v instanceof Villager villager && Workers.cuffed(villager) && villager.isLeashed(), "the client sees the cuffs and the chain");
+                    photo(mc, "14-captive-cuffed");
+                    server(mc, p -> Screens.openWorker(p, (Villager) p.serverLevel().getEntity(captive)));
+                }
+                case 520 -> {
+                    var screen = screen(mc, WorkerScreen.class, "the captive's Worker Screen opens");
+                    check(screen.view().status() == Screens.Status.CUFFED && screen.freeButton().active, "in chains, Set free live: " + screen.view().status());
+                    photo(mc, "15-captive-screen");
+                    mc.setScreen(null);
+                }
+                case 540 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    var trailer = com.chunkworks.vanillawheels.Vehicle.create(l, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("trailer", "trailer"),
+                            net.minecraft.world.phys.Vec3.atBottomCenterOf(capture.offset(0, 0, 8)), 180F);
+                    check(trailer != null, "the trailer's profile is loaded");
+                    l.addFreshEntity(trailer);
+                    trailer.toggleDoors();
+                    trailerId = trailer.getId();
+                    var first = (Villager) l.getEntity(captive);
+                    first.moveTo(capture.getX() + 0.5, capture.getY(), capture.getZ() + 4.5);
+                    var aboard = new ArrayList<Villager>(List.of(first));
+                    VillagerProfession[] trades = {VillagerProfession.FLETCHER, VillagerProfession.MASON, VillagerProfession.CLERIC};
+                    for (int i = 0; i < 3; i++) {
+                        var v = EntityType.VILLAGER.create(l);
+                        v.moveTo(capture.getX() - 1.5 + 1.5 * i, capture.getY(), capture.getZ() + 3.0, 0F, 0F);
+                        v.setVillagerData(v.getVillagerData().setProfession(trades[i]).setLevel(2));
+                        v.setNoAi(true);
+                        l.addFreshEntity(v);
+                        Workers.capture(l, v, p, new ItemStack(Serfdom.CHAIN_LEAD.get()));
+                        aboard.add(v);
+                    }
+                    p.teleportTo(l, capture.getX() + 0.5, capture.getY(), capture.getZ() + 1.5, 0F, 10F);
+                    p.getInventory().setItem(0, ItemStack.EMPTY);
+                    check(trailer.interact(p, net.minecraft.world.InteractionHand.MAIN_HAND).consumesAction(), "an empty-handed click loads");
+                    check(trailer.cargoAboard().size() == 4, "four captives aboard: " + trailer.cargoAboard().size());
+                    // Behind the trailer, which faces north, looking in through its open doors.
+                    p.teleportTo(l, capture.getX() + 0.5, capture.getY() + 0.6, capture.getZ() + 13.5, 180F, 12F);
+                });
+                case 580 -> {
+                    var t = mc.level.getEntity(trailerId);
+                    check(t != null && t.getPassengers().size() == 4, "the client sees four aboard");
+                    photo(mc, "16-trailer-rear");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), capture.getX() + 6.5, capture.getY() + 1.0, capture.getZ() + 8.5, 90F, 10F));
+                }
+                case 600 -> photo(mc, "17-trailer-side");
+                case 620 -> {
                     LOG.info("serfdom booth: COMPLETE");
                     mc.stop();
                 }
