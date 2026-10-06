@@ -155,9 +155,9 @@ public final class Serfdom {
             if (e.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) { e.accept(WORK_POST_ITEM); e.accept(FOR_SALE_ITEM); }
             if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) e.accept(CHAIN_LEAD);
         });
-        // "6": D-0006's purse, ledger and Worker Screen purse row.
+        // "6": D-0006's purse, ledger and Worker Screen purse row. "7": D-0008's farm line on the post's screen.
         bus.addListener((RegisterPayloadHandlersEvent e) -> {
-            var registrar = e.registrar("6");
+            var registrar = e.registrar("7");
             Screens.register(registrar);
             com.chunkworks.serfdom.market.Market.register(registrar);
         });
@@ -166,6 +166,8 @@ public final class Serfdom {
         Hire.listen();
         Picks.listen();
         Posts.listen();
+        com.chunkworks.serfdom.job.Holding.listen();
+        com.chunkworks.serfdom.post.Farms.listen();
         PlacedLogs.listen();
         Workers.listen();
         Captures.listen();

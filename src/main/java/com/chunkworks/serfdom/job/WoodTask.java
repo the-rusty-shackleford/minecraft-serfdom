@@ -40,6 +40,8 @@ final class WoodTask implements Job.Task {
     @Override public BlockPos stand() { return base; }
     @Override public int reach() { return 3; }
     @Override public BlockPos key() { return base; }
+    /** effects: the tree, held while it comes down, so a second woodcutter fells another (D-0008). */
+    @Override public java.util.Optional<Job.Place> hold() { return java.util.Optional.of(Job.Place.tree(base)); }
 
     @Override public Job.Step tick(ServerLevel level, Villager worker, double speed) {
         var tool = worker.getItemBySlot(EquipmentSlot.MAINHAND);

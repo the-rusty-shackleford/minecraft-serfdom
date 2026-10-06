@@ -50,6 +50,10 @@ public final class FarmersDelightCompat {
     /** effects: true iff the state is a Farmer's Delight crop with its own rule. */
     public static boolean crop(BlockState state) { return LOADED && Inner.crop(state); }
 
+    /** effects: true iff the state is a young tomato, still budding on its farmland (D-0008: a crop
+     * a farmer sows, and that sowing copies). */
+    public static boolean budding(BlockState state) { return LOADED && Inner.budding(state); }
+
     /** requires: {@link #crop}(state). effects: true iff it is ready to take. */
     public static boolean ripe(ServerLevel level, BlockPos pos, BlockState state) { return Inner.ripe(state); }
 
@@ -99,6 +103,7 @@ public final class FarmersDelightCompat {
             var block = state.getBlock();
             return block instanceof vectorwing.farmersdelight.common.block.TomatoBlock || block instanceof vectorwing.farmersdelight.common.block.RicePaniclesBlock;
         }
+        static boolean budding(BlockState state) { return state.getBlock() instanceof vectorwing.farmersdelight.common.block.BuddingTomatoBlock; }
         static boolean ripe(BlockState state) {
             return state.getBlock() instanceof net.minecraft.world.level.block.CropBlock crop && crop.isMaxAge(state);
         }

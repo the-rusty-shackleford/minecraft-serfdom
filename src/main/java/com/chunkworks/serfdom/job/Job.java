@@ -36,6 +36,19 @@ public interface Job {
         Step tick(ServerLevel level, Villager worker, double speed);
         /** effects: leaves the target as it is now, wiping any crack drawn on a block. */
         void abandon(ServerLevel level, Villager worker);
+        /** effects: the place this task holds against every other worker while it lasts (D-0008):
+         * a farm's plot, a tree's trunk base; empty for a task that holds none. */
+        default Optional<Place> hold() { return Optional.empty(); }
+    }
+
+    /** A place of work one worker holds at a time (D-0008): a farm's plot, or the trunk base of a
+     * tree being felled. */
+    record Place(Kind kind, long at) {
+        public enum Kind { PLOT, TREE }
+        /** effects: the place that is {@code plot}. */
+        public static Place plot(com.chunkworks.serfdom.domain.Farm.Plot plot) { return new Place(Kind.PLOT, ((long) plot.x() << 32) | (plot.z() & 0xFFFFFFFFL)); }
+        /** effects: the place that is the tree standing on {@code base}. */
+        public static Place tree(BlockPos base) { return new Place(Kind.TREE, base.asLong()); }
     }
 
     enum Step {

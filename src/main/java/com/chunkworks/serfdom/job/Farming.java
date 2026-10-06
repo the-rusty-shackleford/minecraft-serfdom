@@ -2,27 +2,33 @@
 package com.chunkworks.serfdom.job;
 
 import com.chunkworks.serfdom.compat.FarmersDelightCompat;
+import com.chunkworks.serfdom.domain.Farm;
 import com.chunkworks.serfdom.domain.Harvest;
-import com.chunkworks.serfdom.domain.Radius;
+import com.chunkworks.serfdom.post.Farms;
 import com.chunkworks.serfdom.post.WorkPostBlockEntity;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.AttachedStemBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** The farmer (D-0001): every ripe crop on farmland in the post's area, worked through nearest
- * next, each replanted with a seed from its own harvest; pumpkins and melons beside their stems;
- * Farmer's Delight's tomatoes and rice by their own rules. Never tills. The area is read section by
- * section, skipping every section whose palette holds no crop. */
+/** The farmer (D-0001, D-0008): every ripe crop on farmland in its farm, worked a plot at a time,
+ * each replanted with a seed from its own harvest; pumpkins and melons beside their stems; Farmer's
+ * Delight's tomatoes and rice by their own rules; and bare farmland sown as {@link
+ * com.chunkworks.serfdom.domain.Sowing} says, from seeds it carries or the farm's chests. Never
+ * tills. Its farm is its post's ({@link Farms}); the work is what each post's field found
+ * ({@link Field}). A farmer takes the plot its own post's area offers first, else the nearest
+ * anywhere on the farm, never one another worker holds. */
 public final class Farming implements Job {
     public static final Farming INSTANCE = new Farming();
     /** The most crops one round of work takes on before looking again. */
@@ -35,29 +41,58 @@ public final class Farming implements Job {
     }
 
     @Override public Search find(ServerLevel level, Villager worker, WorkPostBlockEntity post, Predicate<BlockPos> skip) {
-        var p = post.getBlockPos();
-        int r = post.radius();
-        var centre = Storage.cell(p);
-        var found = new LinkedHashSet<BlockPos>();
-        for (int cx = (p.getX() - r) >> 4; cx <= (p.getX() + r) >> 4; cx++)
-            for (int cz = (p.getZ() - r) >> 4; cz <= (p.getZ() + r) >> 4; cz++) {
-                var chunk = level.getChunkSource().getChunkNow(cx, cz);
-                if (chunk == null) continue;
-                for (int sy = Math.max(level.getMinSection(), (p.getY() - r) >> 4); sy <= Math.min(level.getMaxSection() - 1, (p.getY() + r) >> 4); sy++) {
-                    var section = chunk.getSection(chunk.getSectionIndexFromSectionY(sy));
-                    if (section.hasOnlyAir() || !section.maybeHas(Farming::crop)) continue;
-                    var origin = SectionPos.of(cx, sy, cz).origin();
-                    for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
-                        var state = section.getBlockState(x, y, z);
-                        if (!crop(state)) continue;
-                        var pos = origin.offset(x, y, z);
-                        if (!Radius.contains(centre, r, Storage.cell(pos))) continue;
-                        target(level, pos, state).filter(t -> !skip.test(t)).ifPresent(found::add);
-                    }
+        var farm = Farms.of(level, post);
+        var at = worker.blockPosition();
+        var carried = worker.getInventory();
+        // The farm's work by plot, each piece once, and the plots with work in the worker's own area.
+        var plots = new LinkedHashMap<Farm.Plot, LinkedHashMap<BlockPos, Field.Work>>();
+        var own = new HashSet<Farm.Plot>();
+        for (var p : farm)
+            p.field().work(level, p).forEach((plot, list) -> {
+                for (var w : list) {
+                    if (skip.test(w.pos())) continue;
+                    plots.computeIfAbsent(plot, k -> new LinkedHashMap<>()).putIfAbsent(w.pos(), w);
+                    if (p == post) own.add(plot);
                 }
+            });
+        // Sowing needs the seed: carried, or in a chest on the farm.
+        var stored = new HashMap<Item, Optional<BlockPos>>();
+        boolean seedless = false;
+        var offers = new ArrayList<Farm.Offer>();
+        var usable = new HashMap<Farm.Plot, List<Field.Work>>();
+        for (var e : plots.entrySet()) {
+            var list = new ArrayList<Field.Work>();
+            long nearest = Long.MAX_VALUE;
+            for (var w : e.getValue().values()) {
+                if (w.sow().isPresent() && Storage.count(carried, w.sow().get()) == 0
+                        && stored.computeIfAbsent(w.sow().get(), seed -> Storage.nearestHolding(level, farm, at, seed)).isEmpty()) {
+                    seedless = true;
+                    continue;
+                }
+                list.add(w);
+                nearest = Math.min(nearest, (long) w.pos().distSqr(at));
             }
-        if (found.isEmpty()) return Search.none();
-        return Search.of(Optional.of(new CropTask(route(worker.blockPosition(), new ArrayList<>(found)))));
+            if (list.isEmpty()) continue;
+            usable.put(e.getKey(), list);
+            offers.add(new Farm.Offer(e.getKey(), nearest, own.contains(e.getKey())));
+        }
+        var id = worker.getUUID();
+        var next = Farm.next(offers, plot -> Holding.heldByAnother(level, Job.Place.plot(plot), id));
+        if (next.isEmpty())
+            return offers.isEmpty() && seedless ? new Search(Optional.empty(), Optional.of(com.chunkworks.serfdom.domain.Need.NO_MATERIALS)) : Search.none();
+        var byPos = new HashMap<BlockPos, Field.Work>();
+        for (var w : usable.get(next.get())) byPos.put(w.pos(), w);
+        var work = route(at, usable.get(next.get()).stream().map(Field.Work::pos).toList()).stream().map(byPos::get).toList();
+        // What the round sows and the farmer lacks is fetched first, from the nearest chest holding it.
+        var sows = new LinkedHashMap<Item, Integer>();
+        for (var w : work) w.sow().ifPresent(seed -> sows.merge(seed, 1, Integer::sum));
+        var fetches = new ArrayList<CropTask.Fetch>();
+        sows.forEach((seed, n) -> {
+            int lack = Math.min(n - Storage.count(carried, seed), seed.getDefaultMaxStackSize());
+            if (lack > 0) stored.computeIfAbsent(seed, s -> Storage.nearestHolding(level, farm, at, s))
+                    .ifPresent(chest -> fetches.add(new CropTask.Fetch(chest, seed, lack)));
+        });
+        return Search.of(Optional.of(new CropTask(Job.Place.plot(next.get()), fetches, work, pos -> { for (var p : farm) p.field().taken(pos); })));
     }
 
     /** effects: what to take for the crop block at {@code pos}: the crop itself when it is ripe on

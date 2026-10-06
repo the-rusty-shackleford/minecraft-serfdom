@@ -18,8 +18,9 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.core.SectionPos;
 
-/** The woodcutter (D-0001): the nearest natural tree whose trunk base is in the post's area,
- * felled whole, top first, its leaves cleared, replanted. A trunk base is a log standing on soil;
+/** The woodcutter (D-0001): the nearest natural tree whose trunk base is in the post's area and
+ * that no other woodcutter holds (D-0008), felled whole, top first, its leaves cleared, replanted.
+ * A trunk base is a log standing on soil;
  * the area is read section by section, skipping every section whose palette holds no log. (Not
  * from the heightmap: a roof, an overhang or a cave ceiling over a tree would hide it.) */
 public final class Woodcutting implements Job {
@@ -44,7 +45,8 @@ public final class Woodcutting implements Job {
                         if (!section.getBlockState(x, y, z).is(BlockTags.LOGS)) continue;
                         var cell = new Cell(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
                         if (!Radius.contains(centre, r, cell) || forest.at(cell).kind() != Felling.Kind.LOG) continue;
-                        if (forest.at(cell.below()).kind() == Felling.Kind.SOIL && !skip.test(pos(cell))) bases.add(cell);
+                        if (forest.at(cell.below()).kind() == Felling.Kind.SOIL && !skip.test(pos(cell))
+                                && !Holding.heldByAnother(level, Job.Place.tree(pos(cell)), worker.getUUID())) bases.add(cell);
                     }
                 }
             }

@@ -7,16 +7,19 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.8.0:
+This is 0.9.0:
 - phase 1: woodcutting and farming, cooking and the blacksmith;
 - phase 2a: the capture (D-0003);
 - phase 2b: what a worker wears (D-0004);
 - phase 3: hunger and meals (D-0005);
 - phase 4: the market (D-0006): 4a, purses, the For Sale block, and villagers who shop; 4b, climate,
   taste, wants, window shopping, and villagers selling to villagers;
-- phase 5: raids and defending the base (D-0007).
+- phase 5: raids and defending the base (D-0007);
+- shared farms and sowing (D-0008): farming posts that touch are one farm, its farmers working a
+  plot each and filling in for one another, and bare farmland sown with what grows around it.
 
-That is the whole of the plan.
+The five phases are the whole of the plan; shared farms came after, from players asking for far
+larger farms.
 
 ## Playing it
 
@@ -57,7 +60,8 @@ That is the whole of the plan.
    - **Job:** Woodcutting, Farming, Cooking or Blacksmith.
    - **Radius:** for woodcutting 4 to 32, default 16; for the others 4 to 16, default 8. The area
      is the cube of that radius around the post.
-   - **Outline:** shows the area. Every chest, barrel or shulker box in the area is the post's
+   - **Outline:** shows the area. Your farming posts whose areas touch are one farm (see
+     [Shared farms](#shared-farms)). Every chest, barrel or shulker box in the area is the post's
      storage.
    - **Stock list** (cooking and blacksmith): what the workers keep in the chests. See below.
 
@@ -341,17 +345,57 @@ Workers open doors and fence gates on their way and close them behind them.
   - Its leaves are cleared, its drops collected, and saplings planted where the trunk stood.
   - It leaves alone anything a player placed, and log pillars with no leaves on them, such as a
     village house's frame.
+  - Two woodcutters on one post fell two trees: each holds the tree it is felling.
 - **Farming** (needs a hoe).
   - The worker harvests ripe crops on farmland and replants each from its own harvest.
   - It also takes pumpkins and melons from their stems, picks Farmer's Delight tomatoes and cuts
     ripe rice.
+  - It sows bare farmland as [Sowing](#sowing) says.
   - It never tills new ground.
+  - It works a plot at a time, and holds it, so two farmers never work one plot (see
+    [Shared farms](#shared-farms)).
 
 A worker takes its tool from the post's chests and wears it out as a player would. When it
 breaks, the worker takes the next. Work goes at a player's speed with the same tool. A worker
 whose profession matches its job works 25% faster: farmers at farming, More Villagers'
 woodworker (or the fletcher, where there is none) at woodcutting, butchers at cooking, and
 armorers, toolsmiths and weaponsmiths at the blacksmith's.
+
+### Shared farms
+
+- **Touching posts are one farm.** Your farming posts whose areas touch or overlap (their outlines
+  meet) are one farm, linked through one another. Each keeps its radius, its chests and its four
+  workers, and a post with nobody on it is just more field. A bigger farm is more posts: nine at
+  radius 16, three by three, cover 99 by 99 blocks. The post's screen says "Farm: 9 posts, 7
+  farmers".
+- **Who works where.** The field is cut into plots, the 8 by 8 columns of the world's grid. A farmer
+  works one plot at a time and holds it, and no other farmer works a held plot. It works its own
+  post's area first, nearest plot first, and helps anywhere on the farm when its own area has
+  nothing left. It looks again after every plot, so it goes home as soon as there is work there.
+- **Filling in.** A farmer lets go of its plot when the plot is done, when its shift stops (a meal, a
+  raid, the end of the day), and when it starves, dies or loses its job. Otherwise (unloaded, kept
+  trading, stuck) its hold lapses after ten seconds. The next free farmer takes the plot.
+- **Chests.** A farmer puts its harvest in the chests of the nearest post on the farm that have
+  room, sorted as in [Storage](#storage), and takes a hoe or seed from the nearest that holds one.
+  Put chests at one post only to make it the farm's barn.
+
+### Sowing
+
+Farmers sow bare farmland (farmland with nothing on it). They never replace a crop and never till:
+
+1. **A spot that has grown a crop gets that crop again.** Plant a carrot in a wheat field and that
+   spot stays a carrot spot.
+2. **A spot that has never grown anything copies its neighbours only when they all agree:** every
+   crop within 4 blocks of it, at its height, must be of one kind. Where two kinds meet, the spot is
+   left for you. Plant one crop and they spread it, a few blocks each pass. To keep new ground for
+   another crop, plant one of that crop in it.
+3. **Stems are never copied,** so a never-planted spot within 4 blocks of a melon or pumpkin stem
+   stays bare: the fruit needs the ground beside its stem.
+4. **A spot waits a minute bare before anyone sows it,** so your own planting comes first.
+
+Seed comes from what the farmer carries (its harvests' spare seed), then from the farm's chests.
+When sowing is all that is left and there is no seed anywhere, it shows the empty crate. Rice grows
+in water, not on farmland, and is never sown.
 
 ### The cook and the blacksmith
 
@@ -402,8 +446,8 @@ The cook's chests are the canteen: workers whose home chests are empty eat from 
 
 ### Storage
 
-A worker carries eight stacks. It puts them away when it is full and at the end of its shift.
-Each item goes to:
+A worker carries eight stacks. It puts them away when it is full and at the end of its shift, in
+its post's chests (on a farm, those of the nearest post with room). Each item goes to:
 
 1. a chest that already holds that item;
 2. else the chest whose items share the most tags with it (seeds with seeds, logs with logs);
@@ -420,7 +464,7 @@ When a worker lacks something, an icon floats over its head. You see it within e
 | A struck-out axe | There's no tool for its job in the post's chests (a cook's knife too). |
 | A struck-out anvil | No station in the area that a worker can use makes what the list wants. |
 | A flame over coal | No fuel. |
-| An empty crate | The chests are short of what the list needs. |
+| An empty crate | The chests are short of what the list needs, or of the seed a farmer would sow. |
 | A full chest | Nothing it carries has anywhere to go. |
 
 Work starts again by itself once the need is met. The stock list says which row lacks what.
@@ -442,6 +486,7 @@ carries, everything it wears and the chain on it. A cured one is a free villager
 | `pick_seconds` | 30 | Time to click a bed or a post after the button. |
 | `action_floor_ticks` | 10 | The shortest any action takes, so work stays visible. |
 | `leaves_per_tick` | 4 | How fast a felled tree's leaves are cleared. |
+| `sow_after_seconds` | 60 | How long a spot of farmland must be bare before a farmer sows it. |
 | `craft_ticks` | 40 | Ticks one craft, cut or repair takes (a matching profession is 25% faster). |
 | `capture_ticks` | 40 | How long the chain is held on a villager to take it. |
 | `capture_reach` | 2.0 | How far from the villager the hold keeps going. |
@@ -517,12 +562,25 @@ The market's data (D-0006):
   - each chunk records the logs players placed;
   - the leaves cleared are exactly the ones vanilla would let decay once the logs are gone.
 - **Searching the area.** Trees and crops are found by reading the area's chunk sections and
-  skipping every section whose palette lacks a log or a crop, never block by block. Storage is
-  the area's block entities with an item handler of 18 slots or more, so Create's vaults count;
-  that index is rebuilt when a block changes in the area.
-- **Gates.** Every villager walks with a navigation that is vanilla's, except that for a worker a
-  closed fence gate counts as a wooden door. A behaviour opens and closes gates as vanilla's does
-  doors.
+  skipping every section whose palette lacks a log, a crop or farmland, never block by block.
+  Storage is the area's block entities with an item handler of 18 slots or more, so Create's vaults
+  count; that index is rebuilt when a block changes in the area.
+- **Fields** (D-0008, `job/Field`). A farming post's area is swept into its field: the ripe crops and
+  the spots due for sowing, by plot, what each spot last grew, and since when each has been bare
+  (none of it saved). An area is swept the first time it is read; after that the server sweeps one
+  area a tick, the most overdue of those read in the last 200 ticks and swept 100 or more ago. A
+  radius-16 area full of wheat takes about a millisecond.
+- **Farms and holds** (`domain/Farm`, `post/Farms`, `domain/Holds`, `job/Holding`). Which posts are one
+  farm (cached until a post loads, unloads, or takes a new job, radius or owner), the plots, the next
+  plot (its own area's first, then the nearest), and who holds which plot or tree: renewed every tick
+  a worker walks or works for it, let go when its task ends or its shift stops, lapsing 200 ticks
+  after its last renewal; not saved.
+- **Sowing** (`domain/Sowing`): the four rules above, worked out for an area in one pass by counting
+  each kind over a sliding 9 by 9 window.
+- **Paths.** Every villager walks with a navigation that is vanilla's, except that for a worker a
+  closed fence gate counts as a wooden door, and that a Work Post is a fence to any path that does
+  not end at it: its pole is no full block, so vanilla would plan straight over it. A behaviour opens
+  and closes gates as vanilla's does doors.
 - **The workshop** (D-0002):
   - **The planner** (`domain/Recipes`) is Warehouse Manager's, with a station on every rule. It
     plans the whole tree to depth 8, never spends an item on its own ingredients, and tries
@@ -672,6 +730,7 @@ This runs the JUnit domain tests, the GameTests and the photo booth.
   the environment: the build opens the booth's window wherever `DISPLAY` points. Without a display,
   add `-PskipBooth`.
 - The GameTests log every worker's plan with `-Dserfdom.trace=true`, which the gametest run sets.
+  For the booth, `-PboothTrace` does the same, and `-PboothScene=farm` runs the farm scene alone.
 
 The art is drawn by `devtools/art/art.py`:
 

@@ -92,6 +92,9 @@ neoForge {
             sourceSet = sourceSets.gametest
             gameDirectory = file('run/booth')
             systemProperty 'serfdom.booth', 'true'
+            // `-PboothScene=farm` runs the farm scene alone (D-0008), `-PboothTrace` logs every worker's plan.
+            systemProperty 'serfdom.booth.scene', String.valueOf(project.findProperty('boothScene') ?: '')
+            systemProperty 'serfdom.trace', String.valueOf(project.hasProperty('boothTrace'))
             programArguments.addAll('--quickPlaySingleplayer', 'booth', '--width', '1280', '--height', '720')
             taskBefore boothWorld
             taskBefore boothModFolder

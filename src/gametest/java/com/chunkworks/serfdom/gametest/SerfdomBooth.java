@@ -58,7 +58,9 @@ import org.slf4j.LoggerFactory;
  * trade screen's purse beside a sold-out trade; (D-0006, 4b) a window shopper's glance and its
  * favourite's hop, a purchase from a farmer, the ledger's "not interested"; and (D-0007) a raid on the
  * base: a defender armed at its chest, a swordsman's blow, an arrow in flight, a gunner's hit, and a
- * chest with its bow put back. Every step also checks in code what it can. This fixture never ships. */
+ * chest with its bow put back; and (D-0008) a farm of nine posts: a bare patch before it is sown,
+ * five farmers each in a plot of its own, the post's screen counting the farm, and the patch sown.
+ * Every step also checks in code what it can. This fixture never ships. */
 @EventBusSubscriber(modid = "serfdom_gametest", value = Dist.CLIENT)
 public final class SerfdomBooth {
     private static final Logger LOG = LoggerFactory.getLogger("Serfdom booth");
@@ -90,6 +92,19 @@ public final class SerfdomBooth {
     private static net.minecraft.world.entity.raid.Raid raid;
     private static volatile boolean putBack;
     private static boolean armedShot, swordShot, arrowShot, gunShot, stopped;
+    // D-0008: a farm of nine posts.
+    private static BlockPos farmLot;
+    private static final BlockPos[] FARM_POSTS = new BlockPos[9];
+    /** The cells of the 3 by 3 farm that have a farmer, by index (3 * column + row). */
+    private static final int[] FARMED = {0, 6, 4, 2, 8};
+    private static volatile int holdersSeen;
+    private static boolean sharedShot, sownShot;
+    /** The tick all five farmers were first seen in plots of their own; the photo waits until they are
+     * out in them. */
+    private static int allHeldAt = -1;
+    /** The farm scene's steps, each started when the one before is done: how long five farmers take
+     * to fetch their hoes and spread out is theirs to say, not a fixed tick's. */
+    private static int farmStep, farmStepAt;
 
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if (!Boolean.getBoolean("serfdom.booth")) return;
@@ -98,6 +113,11 @@ public final class SerfdomBooth {
         if (mc.screen instanceof PauseScreen) mc.setScreen(null);
         mc.getToasts().clear();
         try {
+            // One scene alone, after the ground is laid: `-PboothScene=farm`.
+            if (tick == 30 && "farm".equals(System.getProperty("serfdom.booth.scene"))) {
+                keep = mc.player.blockPosition().offset(-48, 0, 0);
+                tick = 4139;
+            }
             switch (++tick) {
                 case 20 -> server(mc, p -> {
                     var l = p.serverLevel();
@@ -913,15 +933,82 @@ public final class SerfdomBooth {
                     photo(mc, "55-put-back");
                     mc.setScreen(null);
                 }
-                case 4140 -> {
-                    LOG.info("serfdom booth: COMPLETE");
-                    mc.stop();
+                case 4140 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    l.setDayTime(6000);
+                    farmLot = keep.offset(88, 0, 0);
+                    for (int x = -6; x <= 33; x++) for (int z = -8; z <= 33; z++) {
+                        l.setBlockAndUpdate(farmLot.offset(x, -1, z), Blocks.GRASS_BLOCK.defaultBlockState());
+                        for (int y = 0; y < 5; y++) l.setBlockAndUpdate(farmLot.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                    }
+                    // Nine 9 by 9 cells, a radius-4 post at each one's centre over a water source; ripe
+                    // wheat, but young wheat in the four cells of the south-east, and a 4 by 4 patch bare
+                    // in the middle of them.
+                    for (int x = 0; x < 27; x++) for (int z = 0; z < 27; z++) {
+                        if (x % 9 == 4 && z % 9 == 4) continue;
+                        l.setBlockAndUpdate(farmLot.offset(x, -1, z), Blocks.FARMLAND.defaultBlockState());
+                        boolean young = x >= 9 && z >= 9, patch = inPatch(x, z);
+                        if (!patch) l.setBlockAndUpdate(farmLot.offset(x, 0, z), ((net.minecraft.world.level.block.CropBlock) Blocks.WHEAT).getStateForAge(young ? 3 : 7));
+                    }
+                    for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) {
+                        var centre = farmLot.offset(9 * i + 4, 0, 9 * j + 4);
+                        l.setBlockAndUpdate(centre.below(), Blocks.WATER.defaultBlockState());
+                        l.setBlockAndUpdate(centre, Serfdom.WORK_POST.get().defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.SOUTH));
+                        var be = (WorkPostBlockEntity) l.getBlockEntity(centre);
+                        be.claim(p.getUUID(), p.getGameProfile().getName());
+                        be.setJob(Serfdom.id("farming"), 4);
+                        be.setOutline(true);
+                        FARM_POSTS[3 * i + j] = centre;
+                    }
+                    var barn = farmLot.offset(12, 0, 13);
+                    l.setBlockAndUpdate(barn, Blocks.CHEST.defaultBlockState());
+                    var chest = (net.minecraft.world.Container) l.getBlockEntity(barn);
+                    for (int s = 0; s < FARMED.length; s++) chest.setItem(s, new ItemStack(Items.IRON_HOE));
+                    chest.setItem(FARMED.length, new ItemStack(Items.WHEAT_SEEDS, 32));
+                    var foot = Blocks.RED_BED.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH);
+                    for (int s = 0; s < FARMED.length; s++) {
+                        var bed = farmLot.offset(2 + 5 * s, 0, -4);
+                        l.setBlockAndUpdate(bed.south(), foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.FOOT));
+                        l.setBlockAndUpdate(bed, foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.HEAD));
+                    }
+                    // The booth can't wait a minute for each spot: a patch is sown 2 seconds after it is seen bare.
+                    com.chunkworks.serfdom.SerfdomConfig.SOW_AFTER_SECONDS.set(2);
+                    // The camera hangs over the farm: in survival it fell to its death, and with no player
+                    // the farm's chunks stopped ticking.
+                    p.setGameMode(GameType.SPECTATOR);
+                    p.teleportTo(l, farmLot.getX() + 18, farmLot.getY() + 9, farmLot.getZ() + 18, 0F, 90F);
+                    mc.execute(() -> mc.options.hideGui = true);
+                });
+                // A few ticks on: vanilla registers a bed as a home in a task of its own.
+                case 4146 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    for (int s = 0; s < FARMED.length; s++) {
+                        var v = EntityType.VILLAGER.create(l);
+                        v.moveTo(farmLot.getX() + 2.5 + 5 * s, farmLot.getY(), farmLot.getZ() - 2.5, 180F, 0F);
+                        v.setVillagerData(v.getVillagerData().setProfession(VillagerProfession.FARMER).setLevel(2));
+                        v.setPersistenceRequired();
+                        l.addFreshEntity(v);
+                        Workers.hire(l, v, p, Optional.empty());
+                        check(Workers.assignBed(l, v, farmLot.offset(2 + 5 * s, 0, -4)) == Workers.Picked.OK, "farmer " + s + " has its bed");
+                        check(Workers.link(l, v, p, FARM_POSTS[FARMED[s]]) == Workers.Picked.OK, "farmer " + s + " is on its post");
+                    }
+                });
+                case 4150 -> {
+                    int bare = 0;
+                    for (int x = 16; x <= 19; x++) for (int z = 16; z <= 19; z++)
+                        if (mc.level.getBlockState(farmLot.offset(x, 0, z)).isAir() && mc.level.getBlockState(farmLot.offset(x, -1, z)).is(Blocks.FARMLAND)) bare++;
+                    check(bare == 16, "the patch is bare: " + bare);
+                    photo(mc, "58-sowing-before");
+                    server(mc, p -> p.teleportTo(p.serverLevel(), farmLot.getX() + 13.5, farmLot.getY() + 15, farmLot.getZ() + 31, 180F, 50F));
                 }
+                case 6000 -> check(sharedShot, "five farmers were photographed in plots of their own");
+                case 7600 -> check(sownShot, "the patch was photographed sown");
                 default -> {
                     if (tick > 1060 && tick < 1500) meals(mc);
                     if (tick > 1595 && tick < 2300) market(mc);
                     if (tick > 2410 && tick < 3200) bazaar(mc);
                     if (tick > 3270 && tick < 3900) defence(mc);
+                    if (tick > 4160) farm(mc);
                     if (tick > 905 && tick < 950) server(mc, p -> {
                         var v = p.serverLevel().getEntity(walker);
                         if (v != null) v.setPos(v.getX() + 0.12, v.getY(), v.getZ());
@@ -1107,6 +1194,74 @@ public final class SerfdomBooth {
                 raid.stop();
             });
         }
+    }
+
+    /** effects: the farm scene's next step: the farm photographed once all five farmers hold plots of
+     * their own; the central post's screen opened, checked and photographed; the camera over the
+     * patch; the patch photographed sown; then the booth is complete. */
+    private static void farm(Minecraft mc) {
+        switch (farmStep) {
+            case 0 -> { shared(mc); if (sharedShot) next(); }
+            case 1 -> { if (tick < farmStepAt + 5) return; server(mc, p -> {
+                var l = p.serverLevel();
+                var centre = FARM_POSTS[4];
+                p.teleportTo(l, centre.getX() + 0.5, centre.getY(), centre.getZ() + 3.5, 180F, 20F);
+                mc.execute(() -> mc.options.hideGui = false);
+                Screens.openPost(p, (WorkPostBlockEntity) l.getBlockEntity(centre));
+            }); next(); }
+            case 2 -> {
+                if (tick < farmStepAt + 20) return;
+                var screen = screen(mc, PostScreen.class, "the central post's screen opens");
+                check(screen.view().farmPosts() == 9 && screen.view().farmWorkers() == FARMED.length,
+                        "the screen counts the farm: " + screen.view().farmPosts() + " posts, " + screen.view().farmWorkers() + " farmers");
+                photo(mc, "57-farm-post-screen");
+                mc.setScreen(null);
+                next();
+            }
+            case 3 -> { server(mc, p -> {
+                p.teleportTo(p.serverLevel(), farmLot.getX() + 18, farmLot.getY() + 9, farmLot.getZ() + 18, 0F, 90F);
+                mc.execute(() -> mc.options.hideGui = true);
+            }); next(); }
+            case 4 -> { if (tick < farmStepAt + 10) return; sown(mc); if (sownShot) next(); }
+            case 5 -> { if (tick < farmStepAt + 20) return; LOG.info("serfdom booth: COMPLETE"); mc.stop(); next(); }
+            default -> {}
+        }
+    }
+
+    private static void next() { farmStep++; farmStepAt = tick; }
+
+    /** effects: every 10 ticks counts on the server the farmers holding a plot of the farm; with all
+     * five in plots of their own, photographs the farm. */
+    private static void shared(Minecraft mc) {
+        if (tick % 10 == 0) server(mc, p -> {
+            var l = p.serverLevel();
+            var holders = new java.util.HashSet<java.util.UUID>();
+            for (int x = 0; x < 27; x += com.chunkworks.serfdom.domain.Farm.PLOT) for (int z = 0; z < 27; z += com.chunkworks.serfdom.domain.Farm.PLOT)
+                for (int dx = 0; dx < com.chunkworks.serfdom.domain.Farm.PLOT; dx += 7) for (int dz = 0; dz < com.chunkworks.serfdom.domain.Farm.PLOT; dz += 7) {
+                    var at = farmLot.offset(x + dx, 0, z + dz);
+                    var plot = com.chunkworks.serfdom.domain.Farm.Plot.of(at.getX(), at.getZ());
+                    com.chunkworks.serfdom.job.Holding.holder(l, com.chunkworks.serfdom.job.Job.Place.plot(plot)).ifPresent(holders::add);
+                }
+            holdersSeen = holders.size();
+        });
+        if (allHeldAt < 0 && holdersSeen >= FARMED.length) allHeldAt = tick;
+        if (!sharedShot && allHeldAt >= 0 && tick >= allHeldAt + 300 && holdersSeen >= FARMED.length) {
+            photo(mc, "56-farm-shared");
+            LOG.info("serfdom booth: PASS {} farmers each hold a plot of their own", holdersSeen);
+            sharedShot = true;
+        }
+    }
+
+    /** effects: true iff the farm's column ({@code x}, {@code z}) is in the bare patch. */
+    private static boolean inPatch(int x, int z) { return x >= 16 && x <= 19 && z >= 16 && z <= 19; }
+
+    /** effects: with every spot of the patch holding wheat on the client, photographs it sown. */
+    private static void sown(Minecraft mc) {
+        if (sownShot) return;
+        for (int x = 16; x <= 19; x++) for (int z = 16; z <= 19; z++) if (!mc.level.getBlockState(farmLot.offset(x, 0, z)).is(Blocks.WHEAT)) return;
+        photo(mc, "59-sowing-after");
+        LOG.info("serfdom booth: PASS the patch is sown with wheat");
+        sownShot = true;
     }
 
     /** effects: clicks the screen's button labelled {@code label}. */

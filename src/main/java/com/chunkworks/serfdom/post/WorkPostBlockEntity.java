@@ -36,8 +36,9 @@ import net.minecraft.world.level.block.state.BlockState;
  * loaded and what will come out of each, and the index of the storage and the stations in its
  * area. The index is not saved: it is found again when the post loads, after a block is placed or
  * broken in the area, and at least once a shift. What each worker is making now (its claim) is
- * not saved either: a task in hand ends with the server. Clients get the job, radius, outline and
- * whether it has workers, to draw the outline.
+ * not saved either: a task in hand ends with the server. Nor is its field (D-0008), what a farming
+ * post's area offers its farm. Clients get the job, radius, outline and whether it has workers, to
+ * draw the outline.
  *
  * <p>Rep invariant: workers.size() &le; {@link Assignment#MAX_WORKERS}; radius within the job's
  * {@link Radius} when the job is known. */
@@ -57,6 +58,7 @@ public final class WorkPostBlockEntity extends BlockEntity {
     private final Map<UUID, Claim> claims = new HashMap<>();
     private boolean stale = true;
     private long indexedAt;
+    private final com.chunkworks.serfdom.job.Field field = new com.chunkworks.serfdom.job.Field();
 
     public WorkPostBlockEntity(BlockPos pos, BlockState state) { super(Serfdom.WORK_POST_ENTITY.get(), pos, state); }
 
@@ -72,7 +74,10 @@ public final class WorkPostBlockEntity extends BlockEntity {
     public List<String> workerNames() { return List.copyOf(workers.values()); }
 
     /** effects: makes {@code player} the post's owner (the one who placed it). */
-    public void claim(UUID player, String name) { owner = Optional.of(player); ownerName = name; changed(); }
+    public void claim(UUID player, String name) { owner = Optional.of(player); ownerName = name; Posts.reshaped(); changed(); }
+
+    /** effects: what a farming post's area offers its farm (D-0008), swept when read. */
+    public com.chunkworks.serfdom.job.Field field() { return field; }
 
     /** effects: sets the job and its radius to the job's default when the job changes; the radius is
      * then held to the job's bounds. */
@@ -83,6 +88,8 @@ public final class WorkPostBlockEntity extends BlockEntity {
         radius = bounds.clamp(jobChanged && newRadius == radius ? bounds.standard() : newRadius);
         stale = true;
         stationsStale = true;
+        field.stale();
+        Posts.reshaped();
         changed();
     }
 

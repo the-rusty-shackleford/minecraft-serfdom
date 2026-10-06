@@ -19,6 +19,9 @@ public final class SerfdomConfig {
     public static final ModConfigSpec.IntValue ACTION_FLOOR_TICKS = B
             .comment("The fewest ticks any one action of a worker takes, so quick work stays visible.")
             .defineInRange("action_floor_ticks", 10, 1, 200);
+    public static final ModConfigSpec.IntValue SOW_AFTER_SECONDS = B
+            .comment("Seconds a spot of farmland must have been bare before a farmer sows it, so a player's own planting comes first (D-0008).")
+            .defineInRange("sow_after_seconds", 60, 0, 3600);
     public static final ModConfigSpec.IntValue LEAVES_PER_TICK = B
             .comment("Leaves a woodcutter clears each tick once a tree's logs are down.")
             .defineInRange("leaves_per_tick", 4, 1, 64);

@@ -453,7 +453,10 @@ public final class WorkerGameTests {
                 .thenWaitUntil(() -> {
                     for (int x = 10; x <= 12; x++) h.assertTrue(level.getBlockState(Yard.at(h, x, 1, 7)).getValue(CropBlock.AGE) == 0, "harvested and replanted: " + x);
                 }).thenWaitUntil(() -> {
-                    h.assertTrue(worker.getZ() > gate.getZ() + 1.5, "back out of the field: " + worker.position());
+                    // Out of the field: its whole body past the gate block's far face. It rests where
+                    // vanilla's arrival leaves it, two blocks from its post, its slide deciding the last
+                    // hundredths (1.48 to 1.52 past the gate's near face; D-0008's gate record).
+                    h.assertTrue(worker.getZ() - worker.getBbWidth() / 2 > gate.getZ() + 1, "back out of the field: " + worker.position());
                     h.assertFalse(level.getBlockState(gate).getValue(net.minecraft.world.level.block.FenceGateBlock.OPEN), "the gate is shut");
                 }).thenSucceed();
     }

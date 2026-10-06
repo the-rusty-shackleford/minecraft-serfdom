@@ -29,9 +29,14 @@ import org.slf4j.Logger;
 
 /** A worker's shift at its post (D-0001), the whole of its work activity. Between actions it asks
  * {@link Shift#next} what to do, then walks there and does it: empties its inventory into the
- * post's storage, fetches the job's tool, or finds a target and works it a tick at a time. Stuck,
- * it waits by the post showing what it lacks, and asks again every few seconds. Each time it comes
- * to the post it restocks its trades, within vanilla's limits. */
+ * storage of the nearest post of its farm, fetches the job's tool, or finds a target and works it a
+ * tick at a time. Stuck, it waits by the post showing what it lacks, and asks again every few
+ * seconds. Each time it comes to the post it restocks its trades, within vanilla's limits.
+ *
+ * <p>A task's place (D-0008: a farm's plot, a tree) is held while the task lasts: renewed each tick
+ * the worker works it or walks for it, let go when the task ends, is dropped, or the shift stops.
+ * When another worker took it meanwhile (this one stood trading, waiting or starving long enough for
+ * its hold to lapse), the task is dropped. */
 public final class WorkShift extends Behavior<Villager> {
     private static final Logger LOG = LogUtils.getLogger();
     /** Logs every plan, for finding out why a worker does what it does: {@code -Dserfdom.trace=true}. */
@@ -70,8 +75,7 @@ public final class WorkShift extends Behavior<Villager> {
     }
 
     @Override protected void stop(ServerLevel level, Villager worker, long gameTime) {
-        if (task != null) task.abandon(level, worker);
-        task = null;
+        drop(level, worker);
         full = false;
         arrive = null;
         mode = Mode.PLAN;
@@ -87,7 +91,8 @@ public final class WorkShift extends Behavior<Villager> {
         if (post.isEmpty()) return;
         // Starved (D-0005): it works no more, showing it is hungry, until it has eaten.
         if (com.chunkworks.serfdom.Appetite.starved(worker)) {
-            if (mode != Mode.WAIT) { if (task != null) task.abandon(level, worker); task = null; worker.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET); }
+            if (mode != Mode.WAIT) worker.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            drop(level, worker);
             mode = Mode.WAIT;
             waitUntil = now + WAIT;
             Humming.stop(worker, now);
@@ -99,6 +104,12 @@ public final class WorkShift extends Behavior<Villager> {
         // between actions, ended by waiting with nothing to do.
         if (mode == Mode.WAIT) Humming.stop(worker, now);
         else Humming.tick(level, worker, now, mode == Mode.WORK);
+        if (task != null && mode != Mode.WAIT && !keep(level, worker)) {
+            if (TRACE) LOG.info("Serfdom trace: {} lost its place to another worker", worker.getId());
+            drop(level, worker);
+            worker.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            mode = Mode.PLAN;
+        }
         switch (mode) {
             case WAIT -> { if (now >= waitUntil) mode = Mode.PLAN; }
             case WALK -> walk(level, worker, now);
@@ -123,6 +134,8 @@ public final class WorkShift extends Behavior<Villager> {
 
     private void plan(ServerLevel level, Villager worker, WorkPostBlockEntity post, JobScript job, long now) {
         restockIfNear(worker, post, now);
+        var farm = com.chunkworks.serfdom.post.Farms.of(level, post);
+        var at = worker.blockPosition();
         var tag = Jobs.tool(job);
         var carried = worker.getInventory();
         boolean holds = Workers.serves(worker.getItemBySlot(EquipmentSlot.MAINHAND), tag);
@@ -135,18 +148,18 @@ public final class WorkShift extends Behavior<Villager> {
         boolean wantsRoom = carrying && (isFull || tidy || left <= Shift.WIND_DOWN);
         boolean wantsTool = tag.isPresent() && !holds;
         var facts = new Shift.Facts(left, carrying, isFull, tag.isPresent(), holds,
-                wantsTool && Storage.toolAt(level, post, tag.get()).isPresent(),
-                wantsRoom && Storage.room(level, post, carried), tidy);
+                wantsTool && Storage.toolAt(level, farm, at, tag.get()).isPresent(),
+                wantsRoom && Storage.depositTarget(level, farm, at, carried).isPresent(), tidy);
         var next = Shift.next(facts);
         if (TRACE) LOG.info("Serfdom trace: {} at {} {} -> {}", worker.getId(), worker.blockPosition().toShortString(), facts, next);
         var need = next.need();
         switch (next.step()) {
-            case DEPOSIT -> Storage.depositTarget(level, post, carried).ifPresentOrElse(
-                    pos -> walkTo(pos, 2, now, () -> { Storage.depositAt(level, post, carried, pos); full = false; mode = Mode.PLAN; }),
+            case DEPOSIT -> Storage.depositTarget(level, farm, at, carried).ifPresentOrElse(
+                    to -> walkTo(to.pos(), 2, now, () -> { Storage.depositAt(level, to.post(), carried, to.pos()); full = false; mode = Mode.PLAN; }),
                     () -> waitFor(now));
-            case FETCH_TOOL -> Storage.toolAt(level, post, tag.orElseThrow()).ifPresentOrElse(
-                    pos -> walkTo(pos, 2, now, () -> {
-                        var tool = Storage.takeTool(level, pos, tag.get());
+            case FETCH_TOOL -> Storage.toolAt(level, farm, at, tag.orElseThrow()).ifPresentOrElse(
+                    from -> walkTo(from.pos(), 2, now, () -> {
+                        var tool = Storage.takeTool(level, from.pos(), tag.get());
                         if (!tool.isEmpty()) {
                             var hand = worker.getItemBySlot(EquipmentSlot.MAINHAND);
                             if (!hand.isEmpty()) carried.addItem(hand);
@@ -161,6 +174,8 @@ public final class WorkShift extends Behavior<Villager> {
                     var found = Jobs.code(job).find(level, worker, post, skipped::containsKey);
                     task = found.task().orElse(null);
                     if (task == null) need = found.need();
+                    // Taken by another worker this very tick: look again next time.
+                    else if (!keep(level, worker)) task = null;
                 }
                 if (TRACE) LOG.info("Serfdom trace: {} target {}", worker.getId(), task == null ? "none" : task.key().toShortString());
                 if (task == null) idle(worker, post, now);
@@ -181,8 +196,7 @@ public final class WorkShift extends Behavior<Villager> {
                     // shift walks to. Leave it alone a while rather than walk on the spot.
                     if (TRACE) LOG.info("Serfdom trace: {} cannot work {} from {}", worker.getId(), task.stand().toShortString(), worker.blockPosition().toShortString());
                     skipped.put(task.key(), now + SKIP_FOR);
-                    task.abandon(level, worker);
-                    task = null;
+                    drop(level, worker);
                     mode = Mode.PLAN;
                 } else {
                     walkTo(task.stand(), task.reach(), now, () -> mode = Mode.WORK);
@@ -190,8 +204,28 @@ public final class WorkShift extends Behavior<Villager> {
             }
             case FULL -> { full = true; mode = Mode.PLAN; }
             case PAUSE -> mode = Mode.PLAN;
-            case DONE -> { task = null; mode = Mode.PLAN; }
+            case DONE -> { finish(level, worker); mode = Mode.PLAN; }
         }
+    }
+
+    /** effects: renews the worker's hold on its task's place (D-0008); false when another worker
+     * holds it now. True for a task that holds none. */
+    private boolean keep(ServerLevel level, Villager worker) {
+        return task.hold().map(place -> com.chunkworks.serfdom.job.Holding.hold(level, place, worker.getUUID())).orElse(true);
+    }
+
+    /** effects: the task in hand is over: its place is let go. */
+    private void finish(ServerLevel level, Villager worker) {
+        if (task == null) return;
+        task.hold().ifPresent(place -> com.chunkworks.serfdom.job.Holding.release(level, place, worker.getUUID()));
+        task = null;
+    }
+
+    /** effects: the task in hand is left as it is now, and its place let go. */
+    private void drop(ServerLevel level, Villager worker) {
+        if (task == null) return;
+        task.abandon(level, worker);
+        finish(level, worker);
     }
 
     private void walkTo(BlockPos pos, int within, long now, Runnable then) {
@@ -224,8 +258,7 @@ public final class WorkShift extends Behavior<Villager> {
             brain.eraseMemory(MemoryModuleType.WALK_TARGET);
             if (task != null && dest.equals(task.stand())) {
                 skipped.put(task.key(), now + SKIP_FOR);
-                task.abandon(level, worker);
-                task = null;
+                drop(level, worker);
             }
             arrive = null;
             waitFor(now);

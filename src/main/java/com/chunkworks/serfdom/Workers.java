@@ -147,6 +147,7 @@ public final class Workers {
         for (var piece : takeOff(villager, way)) villager.spawnAtLocation(piece);
         releaseBed(level, villager, worker);
         leavePost(level, villager, worker);
+        com.chunkworks.serfdom.job.Holding.releaseAll(villager.getUUID());
         Remedies.forget(level.getServer(), villager.getUUID());
         set(level, villager, Worker.NONE);
         pace(villager);
@@ -262,9 +263,11 @@ public final class Workers {
         return Picked.OK;
     }
 
-    /** effects: the worker leaves its job and lives as a villager at the base. */
+    /** effects: the worker leaves its job and lives as a villager at the base; the places it held
+     * are free at once (D-0008). */
     public static void clearJob(ServerLevel level, Villager villager) {
         var worker = of(villager);
+        com.chunkworks.serfdom.job.Holding.releaseAll(villager.getUUID());
         leavePost(level, villager, worker);
         set(level, villager, worker.with(worker.assignment().withoutPost()));
     }
@@ -361,7 +364,12 @@ public final class Workers {
 
     static void listen() {
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, Workers::interact);
-        NeoForge.EVENT_BUS.addListener((LivingDeathEvent e) -> { if (e.getEntity() instanceof Villager v && !v.level().isClientSide && of(v).owned()) stash(v); });
+        NeoForge.EVENT_BUS.addListener((LivingDeathEvent e) -> {
+            if (!(e.getEntity() instanceof Villager v) || v.level().isClientSide || !of(v).owned()) return;
+            stash(v);
+            // The plot or tree it held is free at once for the others (D-0008).
+            com.chunkworks.serfdom.job.Holding.releaseAll(v.getUUID());
+        });
         NeoForge.EVENT_BUS.addListener(Workers::drops);
         NeoForge.EVENT_BUS.addListener(Workers::converted);
         NeoForge.EVENT_BUS.addListener(Workers::joined);

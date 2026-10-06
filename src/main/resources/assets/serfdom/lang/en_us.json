@@ -65,6 +65,7 @@
   "screen.serfdom.outline.on": "Shown",
   "screen.serfdom.outline.off": "Hidden",
   "screen.serfdom.workers": "Workers (%s of 4)",
+  "screen.serfdom.farm": "Farm: %s posts, %s farmers",
   "screen.serfdom.no_jobs": "No jobs loaded",
   "screen.serfdom.back": "Back",
   "screen.serfdom.stock.label": "Stock",

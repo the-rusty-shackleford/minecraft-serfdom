@@ -1,5 +1,16 @@
 # Serfdom
 
+**0.9.0 (shared farms and sowing, D-0008): built and gated on 2026-10-06. Not released; on Rusty's go,
+with or after the 0.8.1 startup-stall fix (see Next).** Gate: `devtools/verification/release-0.9.0.md`
+(319 JUnit, 113 GameTests seven runs in a row, booth 125 checks with 59 photos, 25 of 25 mutations; jar
+sha1 `8500ca6b`). Rusty's calls: touching farming posts of one owner are one farm (over one big post);
+sowing copies what grows near "so long as their copying does not interfere with what you decided is to
+be grown". A farmer holds an 8 by 8 plot at a time, its own post's area first, and lets go when it
+stops, dies or loses its job (else a 10-second lapse); the harvest goes to the nearest post's chests;
+woodcutters hold their trees. Both old defects (two farmers chasing one route, two woodcutters at one
+tree) were reproduced on 0.8.0 first. Found: a Work Post was open ground to the pathfinder (now a
+fence to paths not ending at it). Not seen by Rusty: photos 56 to 59; nothing of it in live play.
+
 **0.8.0 released 2026-10-06 in pack 1.73.0** with Vanilla Wheels 1.11.0 and Village Law 1.1.0, on
 Rusty's go ("release all three"): public at github.com/the-rusty-shackleford/minecraft-serfdom,
 tag `v0.8.0`, the gate's jar (sha1 `64c9330e`) on GitHub and on the server. The box's first start
@@ -72,8 +83,8 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | Public at github.com/the-rusty-shackleford/minecraft-serfdom, jars on its Releases |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md` (all in `devtools/verification/`) |
-| Release | 0.8.0 in pack 1.73.0 (2026-10-06); the next only on Rusty's go, `add-file --replaces mods/serfdom-0.8.0.jar` |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md`; 0.9.0: `release-0.9.0.md` (all in `devtools/verification/`) |
+| Release | 0.8.0 in pack 1.73.0 (2026-10-06); 0.9.0 built, only on Rusty's go, `add-file --replaces mods/serfdom-0.8.0.jar` |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
 "Rusty Shackleford and nfx". Nests Carried. Optional: Village Deed 2.2+ (bought villages, home
@@ -128,6 +139,8 @@ Each phase is previewed to Rusty before it is built.
     does now (`decide`).
   - 5: `Armoury` (what to take), `Defence` (who musters, the next step, the hand, reach, a reload, a
     blow's cooldown), `LineOfFire`.
+  - 0.9.0 (D-0008): `Farm` (which posts are one farm, the plots, the next plot), `Holds` (one worker a
+    plot or a tree, lapsing), `Sowing` (which crop a bare spot takes).
 - `src/main`:
   - `Serfdom` (registries), `SerfdomConfig`.
   - `Worker` (the saved attachment) and `Workers` (state, hire, beds, posts, needs, the tool between
@@ -154,6 +167,11 @@ Each phase is previewed to Rusty before it is built.
     chests; `Arms` the `serfdom:arms` attachment), `behavior/RaidDuty` (core), `behavior/Defend` (the
     `serfdom:defend` activity), `behavior/Unless` (vanilla's panic and raid triggers, skipped while
     defending), `compat/GunsCompat` (the Ranged Weapons protocol, compile only).
+  - 0.9.0 (D-0008): `post/Farms` (a post's farm, cached by `Posts`' generation; the server's one sweep
+    a tick of the most overdue field), `job/Field` (a farming post's area: its work by plot, what each
+    spot grew, since when bare), `job/Holding` (the holds, by dimension, not saved); `Job.Task.hold`;
+    `Farming` and `CropTask` work a plot (harvest, replant, sow, fetch seed); `Storage`'s farm lookups;
+    `WorkerNavigation` makes a Work Post a fence to paths that don't end at it.
   - `behavior/`: `WorkShift`, `FollowOwner`, `KeepBed`, `OpenGates`, `WorkerNavigation`; 2a:
     `Stay`, `CaptiveNight`, `RunHome`.
   - `job/`: `Jobs` (data), `Woodcutting` + `WoodTask`, `Farming` + `CropTask`, `Storage`, `Tools`;
@@ -348,8 +366,35 @@ Each phase is previewed to Rusty before it is built.
   chest by the test's end though the put-back had finished; 13 runs since have passed, and the
   put-back now logs what it puts where (`release-0.8.0.md`).
 
+**Met in 0.9.0:**
+- **A Work Post is open ground to vanilla's pathfinder** (its pole is no full block), so a villager
+  walking past one plans over it and stands against the pole. It is a fence now to every path that
+  doesn't end at it (`WorkerNavigation`); a path to the post stays vanilla's, since a worker's arrival
+  leans on reaching above the pole.
+- **Vanilla reads a villager's schedule at most every 20 ticks** (`Brain.updateActivityFromSchedule`):
+  a test that ends a shift waits for the activity to change, not a fixed few ticks.
+- **The hour is the level's:** a GameTest that moves the clock ends every other test's shifts in its
+  batch, so such tests stand alone in a batch.
+- **Sweeping one area a tick in reading order starves:** the reader's own area, stale again after its
+  100-tick wait, took the tick every time, and the farm's other areas were never read. The server
+  sweeps the most overdue area instead.
+- **A test must not put a post on its own field's crops,** which then can never be taken.
+- **The booth's camera dies of a fall in survival:** teleported 22 blocks up, it fell, and with no
+  living player the farm's chunks stopped ticking (every farmer frozen mid-walk). The farm scene's
+  camera is a spectator. `-PboothScene=farm` runs that scene alone and `-PboothTrace` logs every
+  worker's plan, which found it in three short runs.
+- **A build that fails to compile runs no tests,** and `run/logs/latest.log` is then the last run's:
+  three runs were read as failing that never ran. Check the log's first line's time; the mutation
+  script deletes the log first and refuses a run that did not compile.
+
 ## Next
 
+- **0.9.0's release, on Rusty's go** (shared farms, D-0008): tag `v0.9.0`, attach `build/wiki.zip`
+  (the page now has Shared farms and Sowing, photos `farm`, `farm-post`, `sowing-before`,
+  `sowing-after`), replace 0.8.0 in the pack. Judge the wiki page locally first (`snap.py`). Rusty
+  vets photos 56 to 59.
+- Unasked, for Rusty if he wants them: woodcutting posts linked into a shared forest (the same rule
+  would serve); a farmer with no seed buying some at a stall (today it shows the empty crate).
 - **The startup stall** (seen on the box, 2026-10-06): `market/Prices` works out the base values on
   the server thread at start, 2543 ms for the pack's 501 items, and the server fell 3698 ms behind
   right after `Done`. A `/reload` marks the table stale and the next `Prices.value` rebuilds it inside

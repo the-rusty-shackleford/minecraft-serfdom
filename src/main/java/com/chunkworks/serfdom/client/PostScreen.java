@@ -11,7 +11,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /** The Work Post's screen (D-0001, D-0002): the job, stepped through the jobs the server knows; the
  * radius, stepped within that job's bounds; the outline switch; for a cook or a blacksmith, the
- * way to its stock list; and the workers on the post. Each change is sent at once, so the outline
+ * way to its stock list; the workers on the post; and, when the post shares a farm with others
+ * (D-0008), how many posts and workers the farm has. Each change is sent at once, so the outline
  * shows the new area while the screen is open. */
 public final class PostScreen extends Screen {
     private static final int WIDTH = 236, PAD = 8, LINE = 11, ROW = 22, SMALL = 20;
@@ -39,6 +40,9 @@ public final class PostScreen extends Screen {
         mc.setScreen(new PostScreen(view));
     }
 
+    /** effects: true iff the post shares a farm with other posts (D-0008). */
+    private boolean shared() { return view.farmPosts() > 1; }
+
     private boolean workshop() { return !view.jobs().isEmpty() && view.jobs().get(job).workshop() && view.jobs().get(job).id().equals(view.job()); }
 
     public Screens.PostView view() { return view; }
@@ -47,7 +51,7 @@ public final class PostScreen extends Screen {
 
     @Override protected void init() {
         int workers = Math.max(1, view.workers().size());
-        height = PAD + LINE + 6 + (workshop() ? 4 : 3) * ROW + LINE + workers * LINE + PAD;
+        height = PAD + LINE + 6 + (workshop() ? 4 : 3) * ROW + LINE + workers * LINE + (shared() ? LINE + 4 : 0) + PAD;
         left = (width - WIDTH) / 2;
         top = (super.height - height) / 2;
         int x = left + PAD + 64, y = top + PAD + LINE + 6;
@@ -114,8 +118,9 @@ public final class PostScreen extends Screen {
         if (workshop()) { g.drawString(font, Component.translatable("screen.serfdom.stock.label"), left + PAD, y + 6, LABEL); y += ROW; }
         g.drawString(font, Component.translatable("screen.serfdom.workers", view.workers().size()), left + PAD, y, LABEL);
         y += LINE;
-        if (view.workers().isEmpty()) g.drawString(font, Component.translatable("screen.serfdom.none"), left + PAD + 8, y, TEXT);
+        if (view.workers().isEmpty()) { g.drawString(font, Component.translatable("screen.serfdom.none"), left + PAD + 8, y, TEXT); y += LINE; }
         for (var w : view.workers()) { g.drawString(font, w, left + PAD + 8, y, TEXT); y += LINE; }
+        if (shared()) g.drawString(font, Component.translatable("screen.serfdom.farm", view.farmPosts(), view.farmWorkers()), left + PAD, y + 4, LABEL);
     }
 
     /** effects: the dimmed world, then the panel, under the buttons. */

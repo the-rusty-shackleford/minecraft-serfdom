@@ -86,8 +86,10 @@ public final class Screens {
                 ByteBufCodecs.VAR_INT, RowView::status, ComponentSerialization.STREAM_CODEC, RowView::detail, RowView::new);
     }
 
-    /** What the Work Post's screen shows. */
-    public record PostView(BlockPos pos, ResourceLocation job, List<JobChoice> jobs, int radius, boolean outline, List<String> workers, List<RowView> rows) implements CustomPacketPayload {
+    /** What the Work Post's screen shows; {@code farmPosts} and {@code farmWorkers} count its farm's
+     * posts (itself among them) and their workers (D-0008), 1 and its own for a post alone. */
+    public record PostView(BlockPos pos, ResourceLocation job, List<JobChoice> jobs, int radius, boolean outline, List<String> workers, List<RowView> rows,
+                           int farmPosts, int farmWorkers) implements CustomPacketPayload {
         public static final Type<PostView> TYPE = new Type<>(Serfdom.id("post_view"));
         private static final StreamCodec<RegistryFriendlyByteBuf, List<JobChoice>> JOBS = JobChoice.CODEC.apply(ByteBufCodecs.list());
         private static final StreamCodec<io.netty.buffer.ByteBuf, List<String>> NAMES = ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list());
@@ -100,8 +102,10 @@ public final class Screens {
             buf.writeBoolean(v.outline);
             NAMES.encode(buf, v.workers);
             ROWS.encode(buf, v.rows);
+            buf.writeVarInt(v.farmPosts);
+            buf.writeVarInt(v.farmWorkers);
         }, buf -> new PostView(BlockPos.STREAM_CODEC.decode(buf), ResourceLocation.STREAM_CODEC.decode(buf), JOBS.decode(buf),
-                buf.readVarInt(), buf.readBoolean(), NAMES.decode(buf), ROWS.decode(buf)));
+                buf.readVarInt(), buf.readBoolean(), NAMES.decode(buf), ROWS.decode(buf), buf.readVarInt(), buf.readVarInt()));
         @Override public Type<PostView> type() { return TYPE; }
     }
 
@@ -233,7 +237,9 @@ public final class Screens {
                 rows.add(new RowView(ResourceLocation.parse(row.item()), row.keep(), st.have(), st.status().ordinal(), detail(st)));
             }
         }
-        return new PostView(post.getBlockPos(), post.job(), jobs, post.radius(), post.outline(), post.workerNames(), rows);
+        var farm = com.chunkworks.serfdom.post.Farms.of(level, post);
+        int farmWorkers = farm.stream().mapToInt(p -> p.workers().size()).sum();
+        return new PostView(post.getBlockPos(), post.job(), jobs, post.radius(), post.outline(), post.workerNames(), rows, farm.size(), farmWorkers);
     }
 
     /** effects: a row's standing in words: stocked, being made, what it is short of, the stations it

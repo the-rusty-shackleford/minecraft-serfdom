@@ -22,10 +22,20 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 public final class Posts {
     private static final Map<ResourceKey<Level>, Set<BlockPos>> SERVER = new ConcurrentHashMap<>();
     private static final Map<ResourceKey<Level>, Set<BlockPos>> CLIENT = new ConcurrentHashMap<>();
+    /** Moves on whenever a post loads or unloads, or takes a new job, radius or owner: a farm found
+     * before (D-0008) may have changed. */
+    private static final java.util.concurrent.atomic.AtomicLong GENERATION = new java.util.concurrent.atomic.AtomicLong();
     private Posts() {}
 
-    static void track(Level level, BlockPos pos) { side(level).computeIfAbsent(level.dimension(), k -> ConcurrentHashMap.newKeySet()).add(pos.immutable()); }
-    static void untrack(Level level, BlockPos pos) { var s = side(level).get(level.dimension()); if (s != null) s.remove(pos); }
+    static void track(Level level, BlockPos pos) { side(level).computeIfAbsent(level.dimension(), k -> ConcurrentHashMap.newKeySet()).add(pos.immutable()); reshaped(); }
+    static void untrack(Level level, BlockPos pos) { var s = side(level).get(level.dimension()); if (s != null) s.remove(pos); reshaped(); }
+
+    /** effects: farms are found again before they are next used. */
+    static void reshaped() { GENERATION.incrementAndGet(); }
+    /** effects: a number that changes whenever a farm may have. */
+    static long generation() { return GENERATION.get(); }
+    /** effects: where the server's loaded posts in {@code level} stand. */
+    static Set<BlockPos> server(ResourceKey<Level> level) { return SERVER.getOrDefault(level, Set.of()); }
     private static Map<ResourceKey<Level>, Set<BlockPos>> side(Level level) { return level.isClientSide ? CLIENT : SERVER; }
 
     /** effects: the post at {@code at} when its chunk is loaded and it is there. */

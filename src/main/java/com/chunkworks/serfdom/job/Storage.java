@@ -146,11 +146,6 @@ public final class Storage {
         return moved;
     }
 
-    /** effects: whether anything carried has somewhere to go. */
-    public static boolean room(ServerLevel level, WorkPostBlockEntity post, SimpleContainer carried) {
-        return depositTarget(level, post, carried).isPresent();
-    }
-
     /** effects: whether {@code stacks} all fit into {@code carried} together. */
     public static boolean fits(SimpleContainer carried, List<ItemStack> stacks) {
         var trial = new SimpleContainer(carried.getContainerSize());
@@ -165,6 +160,74 @@ public final class Storage {
     }
 
     public static Cell cell(BlockPos pos) { return new Cell(pos.getX(), pos.getY(), pos.getZ()); }
+
+    // ---- a farm's storage (D-0008) ---------------------------------------------------------------
+
+    /** A container on a farm and the post whose storage it is. */
+    public record At(WorkPostBlockEntity post, BlockPos pos) {}
+
+    /** effects: the farm's posts, the nearest to {@code from} first (ties by position). */
+    static List<WorkPostBlockEntity> nearestFirst(List<WorkPostBlockEntity> farm, BlockPos from) {
+        if (farm.size() == 1) return farm;
+        var out = new ArrayList<>(farm);
+        out.sort(Comparator.<WorkPostBlockEntity>comparingDouble(p -> p.getBlockPos().distSqr(from)).thenComparingLong(p -> p.getBlockPos().asLong()));
+        return out;
+    }
+
+    /** effects: where on the farm to take what is carried: of the post nearest {@code from} whose
+     * storage takes something carried, the container its sorting chooses ({@link #depositTarget}). */
+    public static Optional<At> depositTarget(ServerLevel level, List<WorkPostBlockEntity> farm, BlockPos from, SimpleContainer carried) {
+        for (var post : nearestFirst(farm, from)) {
+            var pos = depositTarget(level, post, carried);
+            if (pos.isPresent()) return Optional.of(new At(post, pos.get()));
+        }
+        return Optional.empty();
+    }
+
+    /** effects: of the post nearest {@code from} whose storage holds something in {@code tag}, the
+     * container nearest that post holding one. */
+    public static Optional<At> toolAt(ServerLevel level, List<WorkPostBlockEntity> farm, BlockPos from, TagKey<Item> tag) {
+        for (var post : nearestFirst(farm, from)) {
+            var pos = toolAt(level, post, tag);
+            if (pos.isPresent()) return Optional.of(new At(post, pos.get()));
+        }
+        return Optional.empty();
+    }
+
+    /** effects: the container on the farm holding {@code item} nearest {@code from}. */
+    public static Optional<BlockPos> nearestHolding(ServerLevel level, List<WorkPostBlockEntity> farm, BlockPos from, Item item) {
+        BlockPos best = null;
+        for (var post : farm) for (var pos : post.storage(level)) {
+            if (best != null && pos.distSqr(from) >= best.distSqr(from)) continue;
+            var h = handler(level, pos);
+            if (h.isEmpty()) continue;
+            for (int i = 0; i < h.get().getSlots(); i++) if (h.get().getStackInSlot(i).is(item)) { best = pos; break; }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** effects: takes up to {@code count} of {@code item} out of the container at {@code pos} into
+     * {@code into}, as many as fit there; returns how many it took. */
+    public static int takeUpTo(ServerLevel level, BlockPos pos, Item item, int count, SimpleContainer into) {
+        var h = handler(level, pos).orElse(null);
+        if (h == null) return 0;
+        int took = 0;
+        for (int i = 0; i < h.getSlots() && took < count; i++) {
+            if (!h.getStackInSlot(i).is(item)) continue;
+            var got = h.extractItem(i, count - took, false);
+            var rest = into.addItem(got);
+            if (!rest.isEmpty()) { ItemHandlerHelper.insertItemStacked(h, rest, false); took += got.getCount() - rest.getCount(); break; }
+            took += got.getCount();
+        }
+        return took;
+    }
+
+    /** effects: how many of {@code item} {@code carried} holds. */
+    public static int count(SimpleContainer carried, Item item) {
+        int n = 0;
+        for (int i = 0; i < carried.getContainerSize(); i++) if (carried.getItem(i).is(item)) n += carried.getItem(i).getCount();
+        return n;
+    }
 
     // ---- a workshop's fetching (D-0002) ---------------------------------------------------------
 

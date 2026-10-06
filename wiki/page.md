@@ -66,20 +66,61 @@ The **Work Post** is a fence and a sign, shapeless. Right-click it to set:
   [the cook and the blacksmith](#the-cook-and-the-blacksmith).
 
 Every chest, barrel or shulker box in the area is the post's storage. Up to four workers
-share a post. Breaking the post sends its workers back to an ordinary day.
+share a post, and farming posts whose areas touch share a farm (see
+[Shared farms](#shared-farms)). Breaking the post sends its workers back to an ordinary day.
 
 ### Woodcutting (needs an axe)
 
 The worker fells the nearest **natural** tree whose trunk stands in the area: the whole tree,
 top first, 2×2 trees too. It clears the leaves, collects the drops and replants saplings. It
 leaves alone anything a player placed, and log pillars with no leaves on them, like a village
-house's frame.
+house's frame. Two woodcutters on one post fell two different trees.
 
 ### Farming (needs a hoe)
 
 The worker harvests ripe crops on farmland and replants each from its own harvest. It also
-takes pumpkins and melons, picks Farmer's Delight tomatoes and cuts ripe rice. It never tills
-new ground.
+takes pumpkins and melons, picks Farmer's Delight tomatoes and cuts ripe rice, and it sows bare
+farmland (see [Sowing](#sowing)). It never tills new ground.
+
+### Shared farms
+
+Want a bigger farm? **Place more farming posts so their outlines touch.** Your posts whose areas
+touch or overlap become one farm. There's nothing to click.
+
+![A farm of nine posts, five farmers each in a plot of its own](img/farm.webp)
+
+- Each post keeps its own radius, chests and four workers. A post with no workers is just more
+  field. Nine posts at radius 16 cover a 99 by 99 field.
+- The field is cut into 8 by 8 plots. Each farmer works one plot at a time, and no two farmers
+  ever work the same plot.
+- A farmer works **its own post's area first**, then helps anywhere on the farm.
+- **They fill in for each other.** When a farmer dies, goes off to eat, defends a raid or ends its
+  day, its plot is free at once for the next farmer. If it just vanishes (its chunk unloads), the
+  plot frees itself after ten seconds.
+- A farmer drops its harvest in the **nearest post's chests** on the farm. Put chests at one post
+  only to make it the farm's barn.
+- The post's screen shows how big the farm is:
+
+![The post's screen counting its farm](img/farm-post.webp)
+
+### Sowing
+
+Farmers sow bare farmland, **without overriding what you planted**:
+
+![A bare patch in young wheat, before the farmers sow it](img/sowing-before.webp)
+
+![The same patch, sown with wheat](img/sowing-after.webp)
+
+1. A spot that has grown a crop only ever gets that crop again. Plant a carrot in a wheat field
+   and that spot stays a carrot spot.
+2. Farmland that has never grown anything copies its neighbours **only when they all agree**:
+   every crop within 4 blocks has to be the same kind. Where two crops meet, it's left for you.
+3. So **plant one and they spread it.** Till a field, plant a few wheat, and the farmers fill it
+   in. To keep a new patch for carrots, plant a carrot in it first.
+4. They wait **a minute** before sowing a bare spot, so your own planting always comes first.
+5. They never copy melon or pumpkin stems, and leave the ground near a stem bare for its fruit.
+
+Seed comes from what the farmer carries, then from the farm's chests.
 
 ### Tools, speed and storage
 
@@ -115,7 +156,7 @@ When a worker lacks something, an icon floats over its head (you see it within e
 | A struck-out axe | No tool for its job in the post's chests (or no knife, for a cook). |
 | A struck-out anvil | No station in the area makes what the stock list wants. |
 | A flame over coal | No fuel. |
-| An empty crate | The chests are short of what the stock list needs. |
+| An empty crate | The chests are short of what the stock list needs, or a farmer has nothing left to do but sow and no seed. |
 | A full chest | Nothing it carries has anywhere to go. |
 
 Work starts again by itself once the need is met.
