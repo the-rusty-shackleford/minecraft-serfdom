@@ -1,7 +1,16 @@
 # Serfdom
 
-**0.8.0 (phase 5, raids and the base's defence, D-0007): built and gated on 2026-10-05. Not
-released.** Gate: `devtools/verification/release-0.8.0.md` (290 JUnit, 99 GameTests eight runs in a
+**0.8.0 released 2026-10-06 in pack 1.73.0** with Vanilla Wheels 1.11.0 and Village Law 1.1.0, on
+Rusty's go ("release all three"): public at github.com/the-rusty-shackleford/minecraft-serfdom,
+tag `v0.8.0`, the gate's jar (sha1 `64c9330e`) on GitHub and on the server. The box's first start
+loaded it beside Lithium with no error, and a saved villager in the CTOV village at -1264, -1040
+(force-loaded with nobody on, then released) read `serfdom:purse {emeralds: 64}`. **Found on the
+box:** the base values (`market/Prices`) are worked out on the server thread as it starts, 2543 ms
+for 501 items, and the server logged "Can't keep up" 3698 ms behind just after `Done` (see Next).
+Not yet seen in play: anything of Serfdom. The server repo's `knowledge/releases/pack-1.73.0.md`
+has the deployment.
+
+**0.8.0 (phase 5, raids and the base's defence, D-0007): built and gated on 2026-10-05.** Gate: `devtools/verification/release-0.8.0.md` (290 JUnit, 99 GameTests eight runs in a
 row, booth 110 checks with 55 photos, 23 of 23 mutations; jar sha1 `64c9330e`). Rusty's call: workers never take a
 launcher. When a raid comes, owned villagers (hired and captive) arm from their home chest and their
 post's chests (the best ranged weapon they have ammunition for, a melee backup), fight the raid's
@@ -62,9 +71,9 @@ repos and unreleased, to ship with it.
 
 | What | Where it stands |
 |---|---|
-| Repo | No remote yet |
+| Repo | Public at github.com/the-rusty-shackleford/minecraft-serfdom, jars on its Releases |
 | Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md` (all in `devtools/verification/`) |
-| Release | Only on Rusty's go, as a new jar in the pack, with Vanilla Wheels 1.11.0 and Village Law 1.1.0 |
+| Release | 0.8.0 in pack 1.73.0 (2026-10-06); the next only on Rusty's go, `add-file --replaces mods/serfdom-0.8.0.jar` |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
 "Rusty Shackleford and nfx". Nests Carried. Optional: Village Deed 2.2+ (bought villages, home
@@ -341,14 +350,19 @@ Each phase is previewed to Rusty before it is built.
 
 ## Next
 
+- **The startup stall** (seen on the box, 2026-10-06): `market/Prices` works out the base values on
+  the server thread at start, 2543 ms for the pack's 501 items, and the server fell 3698 ms behind
+  right after `Done`. A `/reload` marks the table stale and the next `Prices.value` rebuilds it inside
+  whatever tick asks (a trade, a shopper), so there the stall lands in play. Fixes to weigh: cache the table on disk keyed by
+  the data packs and mod list, or build the price lists a profession per tick. A 0.8.1 for it needs
+  Rusty's go.
+- Watch the box's log for Serfdom in live play: no hire, capture, market day or raid has run there.
 - Rusty vets 0.8.0's photos 51 to 55 (and says whether a weapon across folded arms will do), 0.7.0's
   47 to 50 and 0.6.0's 37 to 46.
 - RWM's magazines as protocol ammo stores, if Rusty wants defenders to use them: a change to RWM.
 - Rusty vets 0.5.0's photos 34 to 36 and the hungry icon in 01; 0.4.0's photos 18 to 33 (armour,
   clothes, the robe rule, the child, the trailer, the dressed Worker Screen); 0.3.0's photos 05 and 13 to 17 and the song (`run/work_song.wav`); and
   0.2.0's photos 07 to 12 and the "no station" icon in photo 01.
-- Then the release, on his go: a public repo for Serfdom, tags, GitHub releases; in the pack a new
-  `add-file` for Serfdom and `--replaces` for Vanilla Wheels (1.10.1) and Village Law (1.0.0).
 - Not covered by any test: how the armour looks (the fit, the robe and the hat are judged by the
   booth's photos, and `FitTest` checks the boxes only); Farmer's Delight's placed skillet (left out, D-0002); a pack's much
   larger recipe book (the planner was timed on the gametest server's: 2.6 ms for the eight
