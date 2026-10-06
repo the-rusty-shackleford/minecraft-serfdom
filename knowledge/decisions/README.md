@@ -13,3 +13,4 @@ Rationales are append-only. Supersede with a new decision.
 | [D-0007](D-0007.md) | Accepted | Phase 5: owned villagers arm from their chests in a raid (guns, crossbows, bows, melee), fight, and put it all back; never a launcher |
 | [D-0008](D-0008.md) | Accepted | Shared farms: touching farming posts are one farm, a farmer holds a plot at a time (its own area first) and the others fill in; sowing copies what grows near without overriding the player's crops; woodcutters hold their trees |
 | [D-0009](D-0009.md) | Accepted | No structure search while the base values sample the price lists: a map listing (Backport's explorer maps) held the server 2.5 s at every start and saved nine maps |
+| [D-0010](D-0010.md) | Accepted | Every villager's navigation floats, as vanilla's does: Serfdom's replacement had dropped it, and villagers pathed along the bottom of water |

@@ -491,4 +491,79 @@ public final class WorkerGameTests {
     private static int age(net.minecraft.world.level.block.state.BlockState state) {
         return state.hasProperty(CropBlock.AGE) ? state.getValue(CropBlock.AGE) : state.getValue(net.minecraft.world.level.block.BeetrootBlock.AGE);
     }
+
+    /** effects: every block from (x0, y0, z0) to (x1, y1, z1), both included, set to {@code block}. */
+    private static void fill(GameTestHelper h, int x0, int y0, int z0, int x1, int y1, int z1, net.minecraft.world.level.block.Block block) {
+        for (int x = x0; x <= x1; x++) for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) h.setBlock(x, y, z, block);
+    }
+
+    /** effects: a worker of {@code owner}'s, with no bed, so it follows. */
+    private static Villager follower(GameTestHelper h, int x, int z, net.minecraft.server.level.ServerPlayer owner) {
+        var v = Yard.villager(h, x, z, VillagerProfession.FARMER, 2);
+        Workers.hire(h.getLevel(), v, owner, Optional.empty());
+        return v;
+    }
+
+    /** Water (D-0001's navigation keeps vanilla's swimming): a channel two deep and five wide across
+     * the whole yard, banks two high on both sides, so swimming is the only way over. The worker on the
+     * south bank follows its owner on the north bank: it swims and climbs out, and stands on the north
+     * bank. */
+    @GameTest(template = "yard", timeoutTicks = 600) public void aWorkerSwimsADeepChannelToItsOwner(GameTestHelper h) {
+        Yard.floor(h);
+        fill(h, 0, 1, 0, 47, 2, 13, Blocks.DIRT);
+        fill(h, 0, 1, 14, 47, 2, 18, Blocks.WATER);
+        fill(h, 0, 1, 19, 47, 2, 47, Blocks.DIRT);
+        var owner = Yard.player(h, 24, 26, "swimmer");
+        var bank = Yard.at(h, 24, 3, 26);
+        owner.moveTo(bank.getX() + 0.5, bank.getY(), bank.getZ() + 0.5);
+        var worker = follower(h, 24, 9, owner);
+        var start = Yard.at(h, 24, 3, 9);
+        worker.moveTo(start.getX() + 0.5, start.getY(), start.getZ() + 0.5);
+        var north = Yard.at(h, 0, 0, 19).getZ();
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(!worker.isInWater() && worker.blockPosition().getZ() >= north && worker.getY() >= bank.getY() - 0.01,
+                "the worker is out on the north bank: " + worker.position() + ", in water " + worker.isInWater()))
+                .thenSucceed();
+    }
+
+    /** Every villager's navigation floats, as vanilla's villager's does: a free one's, and a worker's. */
+    @GameTest(template = "yard", timeoutTicks = 20) public void aVillagersNavigationFloats(GameTestHelper h) {
+        Yard.floor(h);
+        var owner = Yard.player(h, 4, 4, "floater");
+        var free = Yard.villager(h, 10, 10, VillagerProfession.MASON, 2);
+        var worker = follower(h, 14, 10, owner);
+        h.assertTrue(free.getNavigation().canFloat(), "a free villager's navigation floats, as vanilla's does");
+        h.assertTrue(worker.getNavigation().canFloat(), "a worker's navigation floats");
+        h.succeed();
+    }
+
+    /** A farm's water hole (one deep, flush with the farmland, as a farm is watered) on the straight line
+     * between a worker and its owner across the field: the worker goes round it, never stepping in, and
+     * reaches its owner. */
+    @GameTest(template = "yard", timeoutTicks = 400) public void aWorkerWalksRoundAFarmsWaterHole(GameTestHelper h) {
+        Yard.floor(h);
+        fill(h, 4, 1, 4, 20, 1, 20, Blocks.FARMLAND);
+        h.setBlock(12, 1, 12, Blocks.WATER);
+        var owner = Yard.player(h, 12, 26, "farmhand");
+        var worker = follower(h, 12, 5, owner);
+        var start = Yard.at(h, 12, 2, 5);
+        worker.moveTo(start.getX() + 0.5, start.getY(), start.getZ() + 0.5);
+        var wet = new boolean[1];
+        h.onEachTick(() -> wet[0] |= worker.isInWater());
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(worker.distanceTo(owner) <= 4, "the worker reaches its owner: " + worker.distanceTo(owner)))
+                .thenExecute(() -> h.assertFalse(wet[0], "the worker never stepped into the water hole"))
+                .thenSucceed();
+    }
+
+    /** A worker standing in a farm's water hole climbs out onto the farmland and follows its owner off
+     * the field. */
+    @GameTest(template = "yard", timeoutTicks = 400) public void aWorkerClimbsOutOfAFarmsWaterHole(GameTestHelper h) {
+        Yard.floor(h);
+        fill(h, 4, 1, 4, 20, 1, 20, Blocks.FARMLAND);
+        h.setBlock(12, 1, 12, Blocks.WATER);
+        var owner = Yard.player(h, 12, 28, "farmhand");
+        var worker = follower(h, 12, 12, owner);
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(!worker.isInWater() && worker.distanceTo(owner) <= 4,
+                "the worker is out and with its owner: " + worker.position() + ", in water " + worker.isInWater()))
+                .thenSucceed();
+    }
 }

@@ -1,8 +1,16 @@
 # Serfdom
 
+**0.9.2 (every villager's navigation floats, D-0010): built and gated on 2026-10-06. Not released;
+Rusty holds the release until his batch is done (the held-tool look is next, see Next).** Rusty saw a
+farmer stuck in the farm's water and "pathfinding struggles in water in general": the navigation
+Serfdom gives every villager dropped vanilla's `setCanFloat(true)`, so every villager, free or owned,
+planned along the bottom of water. Reproduced first (a worker never left a channel two deep), fixed in
+one line. Gate: `devtools/verification/release-0.9.2.md` (319 JUnit, 118 GameTests five runs in a row,
+booth 125 checks with 59 photos; jar sha1 `5aad8c4a`). 0.9.2 carries 0.9.1 and 0.9.0 whole.
+
 **0.9.1 (no structure search while sampling the price lists, D-0009): built and gated on 2026-10-06. Not
-released; Rusty holds the release for a pathfinding bug he will bring next, to ship together.** It is
-0.9.0 whole plus the startup-stall fix, in place of the "0.8.1" once planned. Gate:
+released; carried whole into 0.9.2.** It is 0.9.0 whole plus the startup-stall fix, in place of the
+"0.8.1" once planned. Gate:
 `devtools/verification/release-0.9.1.md` (319 JUnit, 114 GameTests, booth 125 checks with 59 photos, 4 of
 4 mutations; jar sha1 `eb6ec2a8`). The stall was one listing: Backport 1.0.9's explorer maps, which the
 sampling's skip of vanilla's treasure maps by name let through; each call searched the world for a
@@ -92,8 +100,8 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | Public at github.com/the-rusty-shackleford/minecraft-serfdom, jars on its Releases |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md`; 0.9.0: `release-0.9.0.md`; 0.9.1: `release-0.9.1.md` (all in `devtools/verification/`) |
-| Release | 0.8.0 in pack 1.73.0 (2026-10-06); 0.9.1 built, held by Rusty for the pathfinding fix, then `add-file --replaces mods/serfdom-0.8.0.jar` |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md`; 0.9.0: `release-0.9.0.md`; 0.9.1: `release-0.9.1.md`; 0.9.2: `release-0.9.2.md` (all in `devtools/verification/`) |
+| Release | 0.8.0 in pack 1.73.0 (2026-10-06); 0.9.2 built, held by Rusty until his batch is done, then `add-file --replaces mods/serfdom-0.8.0.jar` |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
 "Rusty Shackleford and nfx". Nests Carried. Optional: Village Deed 2.2+ (bought villages, home
@@ -409,10 +417,20 @@ Each phase is previewed to Rusty before it is built.
   check every sha1), install the NeoForge server with its installer, and give it another port, no RCON
   and a new world. Recipe in `devtools/verification/release-0.9.1.md`.
 
+**Met in 0.9.2:**
+- **A navigation swapped in after the villager's constructor loses what that constructor set on the old
+  one.** Vanilla's `Villager.<init>` sets doors and floating; `WorkerNavigation` set only doors, and every
+  villager pathed along the bottom of water from 0.1.0 to 0.9.1. A replacement takes over everything the
+  constructor set (`aVillagersNavigationFloats` pins floating).
+- **Water one deep traps nobody;** two deep with banks two high does, when the path is planned along the
+  bottom. A water test needs the deep case.
+
 ## Next
 
-- **A pathfinding bug Rusty has seen, next** (2026-10-06: he holds the release to batch its fix in).
-- **The release, after it and on Rusty's go** (D-0008 and D-0009): tag the version that carries both,
+- **How a worker holds its tool** (Rusty, 2026-10-06: "they look weird holding tools, as if they're
+  holding the sprite and not the tool itself"): vanilla draws a villager's held item on its folded
+  arms as an item on the ground is drawn. A preview of the options first; part of the same batch.
+- **The release, after it and on Rusty's go** (D-0008, D-0009, D-0010): tag the version that carries them,
   attach `build/wiki.zip` (the page has Shared farms and Sowing, photos `farm`, `farm-post`,
   `sowing-before`, `sowing-after`), replace 0.8.0 in the pack. Judge the wiki page locally first
   (`snap.py`). Rusty vets photos 56 to 59.

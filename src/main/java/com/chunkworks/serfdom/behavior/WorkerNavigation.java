@@ -19,11 +19,17 @@ import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
  * end at it (D-0008). Its pole is no full block, so vanilla takes it for open ground and plans
  * straight over it; a villager walking past one stood stuck against the pole. A path to the post
  * itself is planned as vanilla plans it, since a worker's arrival at its post leans on reaching
- * above the pole (D-0006). */
+ * above the pole (D-0006).
+ *
+ * <p>It replaces the navigation the villager's constructor made, so it takes over what that
+ * constructor set on it: doors, and floating. Without floating every villager planned its paths along
+ * the bottom of any water, while its brain's {@code Swim} held it at the surface, and a villager in
+ * water two deep never climbed out (D-0010). */
 public final class WorkerNavigation extends GroundPathNavigation {
     public WorkerNavigation(Mob mob, Level level) {
         super(mob, level);
         setCanOpenDoors(true);
+        setCanFloat(true);
     }
 
     @Override protected net.minecraft.world.level.pathfinder.Path createPath(java.util.Set<net.minecraft.core.BlockPos> targets, int regionOffset, boolean offsetUpward,

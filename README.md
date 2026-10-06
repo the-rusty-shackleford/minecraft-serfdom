@@ -7,7 +7,7 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.9.1:
+This is 0.9.2:
 - phase 1: woodcutting and farming, cooking and the blacksmith;
 - phase 2a: the capture (D-0003);
 - phase 2b: what a worker wears (D-0004);
@@ -19,6 +19,8 @@ This is 0.9.1:
   plot each and filling in for one another, and bare farmland sown with what grows around it.
 - 0.9.1 (D-0009): working out the base values no longer searches the world for map structures,
   which had held the server 2.5 seconds at every start and saved nine unused maps.
+- 0.9.2 (D-0010): villagers swim through water again; since 0.1.0 every villager, free or hired,
+  planned its paths along the bottom of water, and one in water two deep never climbed out.
 
 The five phases are the whole of the plan; shared farms came after, from players asking for far
 larger farms.
@@ -582,7 +584,9 @@ The market's data (D-0006):
 - **Paths.** Every villager walks with a navigation that is vanilla's, except that for a worker a
   closed fence gate counts as a wooden door, and that a Work Post is a fence to any path that does
   not end at it: its pole is no full block, so vanilla would plan straight over it. A behaviour opens
-  and closes gates as vanilla's does doors.
+  and closes gates as vanilla's does doors. It replaces the navigation vanilla's constructor made, so
+  it sets what that one had: doors and floating (D-0010; without floating, paths ran along the bottom
+  of water).
 - **The workshop** (D-0002):
   - **The planner** (`domain/Recipes`) is Warehouse Manager's, with a station on every rule. It
     plans the whole tree to depth 8, never spends an item on its own ingredients, and tries
