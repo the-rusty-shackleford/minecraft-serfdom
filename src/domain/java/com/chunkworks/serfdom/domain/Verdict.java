@@ -3,8 +3,9 @@ package com.chunkworks.serfdom.domain;
 
 import java.util.Objects;
 
-/** What a villager makes of a stall (D-0006). It will pay its base value for an item times the
- * bonuses that apply (1.5 for a need). At or under that it buys; above it, its chance of buying falls
+/** What a villager makes of a stall, or of a villager selling (D-0006). It will pay its base value for
+ * an item times the bonuses that apply: its climate's (1.5 for an item from another climate), its
+ * taste's (0.5 to 1.5), and a need's (1.5). At or under that it buys; above it, its chance of buying falls
  * in a straight line to nothing at {@link #CEILING} times that; and a purse short of one sale can't
  * afford it. Buying, it takes as many sales as it wants, while it can pay, the stall has them and the
  * day's purchases allow. An item at or under its base value is a bargain. */

@@ -107,7 +107,7 @@ public final class HaveMeal extends Behavior<Villager> {
     }
 
     @Override protected void stop(ServerLevel level, Villager worker, long gameTime) {
-        buying.ifPresent(p -> { if (level.getBlockEntity(p.stall()) instanceof com.chunkworks.serfdom.market.ForSaleBlockEntity s) s.letGo(worker.getUUID()); });
+        buying.flatMap(com.chunkworks.serfdom.market.Shoppers.Plan::stall).ifPresent(p -> { if (level.getBlockEntity(p) instanceof com.chunkworks.serfdom.market.ForSaleBlockEntity s) s.letGo(worker.getUUID()); });
         buying = Optional.empty();
         if (!bite.isEmpty()) hands.addItem(bite);
         bite = ItemStack.EMPTY;
@@ -174,21 +174,22 @@ public final class HaveMeal extends Behavior<Villager> {
                 short_, com.chunkworks.serfdom.domain.Shopping.Unit.POINTS, com.chunkworks.serfdom.domain.Shopping.Dest.HOME);
         buying = com.chunkworks.serfdom.market.Shoppers.choose(level, worker, List.of(want));
         if (buying.isEmpty()) { end(level, worker); return; }
-        if (TRACE) LOG.info("Serfdom trace: {} goes to buy food at {}", worker.getId(), buying.get().stall().toShortString());
-        walkTo(level, worker, buying.get().stall(), now, () -> { step = Step.QUEUE; since = level.getGameTime(); });
+        var at = buying.get().stall().orElseThrow();
+        if (TRACE) LOG.info("Serfdom trace: {} goes to buy food at {}", worker.getId(), at.toShortString());
+        walkTo(level, worker, at, now, () -> { step = Step.QUEUE; since = level.getGameTime(); });
     }
 
     /** effects: waits its turn at the stall and buys there, the food into its hands; it gives up after
      * the shop's wait. */
     private void queue(ServerLevel level, Villager worker, long now) {
         var plan = buying.orElse(null);
-        if (plan == null || !(level.getBlockEntity(plan.stall()) instanceof com.chunkworks.serfdom.market.ForSaleBlockEntity stall)) { end(level, worker); return; }
-        worker.getLookControl().setLookAt(Vec3.atCenterOf(plan.stall()).add(0, 0.5, 0));
+        if (plan == null || !(level.getBlockEntity(plan.stall().orElseThrow()) instanceof com.chunkworks.serfdom.market.ForSaleBlockEntity stall)) { end(level, worker); return; }
+        worker.getLookControl().setLookAt(Vec3.atCenterOf(stall.getBlockPos()).add(0, 0.5, 0));
         if (!stall.serve(worker.getUUID(), now)) {
             if (now - since > GoShopping.QUEUE) end(level, worker);
             return;
         }
-        var visit = com.chunkworks.serfdom.market.Counter.visit(level, worker, stall, plan.want());
+        var visit = com.chunkworks.serfdom.market.Counter.visit(level, worker, stall, plan.need());
         stall.letGo(worker.getUUID());
         buying = Optional.empty();
         if (visit.isEmpty() || !visit.get().outcome().reaction().bought()) { end(level, worker); return; }

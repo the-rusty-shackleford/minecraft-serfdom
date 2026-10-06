@@ -22,13 +22,22 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.schedule.Activity;
 
-/** Who shops, when, and at which stall (D-0006), read off a villager for {@link Shopping}; the plan a
- * villager's brain turns to the shop on, waiting for its trip to take it up. */
+/** Who shops, when, and where (D-0006), read off a villager for {@link Shopping}: a stall, or (4b) a
+ * villager selling; the plan a villager's brain turns to the shop on, waiting for its trip to take it
+ * up. */
 public final class Shoppers {
     private Shoppers() {}
 
-    /** A trip planned: the stall and the want it is for. */
-    public record Plan(BlockPos stall, Shopping.Want want) {}
+    /** Where a trip goes: a stall, or a villager selling an item. */
+    public sealed interface Place {}
+    public record AtStall(BlockPos pos) implements Place {}
+    public record AtSeller(UUID seller, net.minecraft.world.item.Item item) implements Place {}
+
+    /** A trip planned: where, and the need it is for; none for a look (window shopping, 4b). */
+    public record Plan(Place place, Optional<Shopping.Want> need) {
+        /** effects: the stall it goes to, if it goes to one. */
+        public Optional<BlockPos> stall() { return place instanceof AtStall s ? Optional.of(s.pos()) : Optional.empty(); }
+    }
     private static final Map<UUID, Plan> PLANS = new ConcurrentHashMap<>();
 
     /** effects: the villager as shopping sees it. */
@@ -49,43 +58,57 @@ public final class Shoppers {
     static int reach() { return SerfdomConfig.SPEC.isLoaded() ? SerfdomConfig.SHOP_REACH.get() : 64; }
 
     /** effects: the stalls the villager may use within reach of its bed, as shopping's offers, by their
-     * index in {@code stalls}. */
+     * index in {@code stalls}, each standing where its block does. */
     public static List<Shopping.Offer> offers(ServerLevel level, BlockPos bed, List<ForSaleBlockEntity> stalls) {
         var out = new ArrayList<Shopping.Offer>();
         for (int i = 0; i < stalls.size(); i++) {
             var st = stalls.get(i);
             var s = st.stall();
             boolean allowed = st.owner().map(o -> DeedCompat.allows(level, bed, o)).orElse(true);
-            out.add(new Shopping.Offer(i, s.item(), s.quantity(), s.price(), Math.sqrt(st.getBlockPos().distSqr(bed)), s.open(), allowed));
+            out.add(new Shopping.Offer(i, s.item(), s.quantity(), s.price(), Math.sqrt(st.getBlockPos().distSqr(bed)), s.open(), allowed, true, st.getBlockPos().asLong()));
         }
         return out;
     }
 
     /** effects: the stall to go to for one of {@code wants} and the want, among the stalls near the
-     * villager's bed; empty when none it may use sells any. */
+     * villager's bed; empty when none it may use sells any. A hungry worker's meal buys here (stalls
+     * only, as D-0006 has it). */
     public static Optional<Plan> choose(ServerLevel level, Villager villager, List<Shopping.Want> wants) {
         var bed = bed(level, villager);
         if (bed.isEmpty() || wants.isEmpty()) return Optional.empty();
         var stalls = Stalls.near(level, bed.get(), reach());
         if (stalls.isEmpty()) return Optional.empty();
         return Shopping.choose(wants, offers(level, bed.get(), stalls), Purses.emeralds(villager))
-                .map(p -> new Plan(stalls.get(p.offer()).getBlockPos(), p.want()));
+                .map(p -> new Plan(new AtStall(stalls.get(p.offer()).getBlockPos()), Optional.of(p.want())));
     }
 
-    /** effects: whether the villager goes shopping now, and if so its plan, waiting for its trip; the
-     * trip counts as made today whether a stall was found or not. */
+    /** effects: whether the villager goes shopping now, and if so its plan, waiting for its trip, as
+     * {@link Shopping#decide} says: for a need, once a social time, at the stall or villager in reach of
+     * its bed that sells it cheapest (the trip counts as made whether one is found or not); else a look
+     * at the nearest stall it has not seen today. */
     public static boolean plan(ServerLevel level, Villager villager) {
         var saved = Purses.of(villager);
         long now = level.getDayTime();
         var who = who(villager);
+        int emeralds = saved.purse().emeralds();
         // The cheap checks first: most villagers most of the day stop here.
-        if (!Shopping.shopper(who) || !Shopping.social(now, who.hired()) || saved.day().tripDay() == com.chunkworks.serfdom.domain.Purse.day(now)) return false;
-        var wants = Needs.wants(level, villager);
-        if (!Shopping.due(who, now, saved.day(), saved.purse().emeralds(), !wants.isEmpty(), perDay())) return false;
-        Purses.set(villager, saved.with(Shopping.tripped(saved.day(), now)));
-        var plan = choose(level, villager, wants);
-        plan.ifPresent(p -> PLANS.put(villager.getUUID(), p));
-        return plan.isPresent();
+        if (!Shopping.shopper(who) || !Shopping.social(now, who.hired()) || emeralds < 1 || Shopping.salesLeft(saved.day(), now, perDay()) < 1) return false;
+        var bed = bed(level, villager);
+        if (bed.isEmpty()) return false;
+        boolean needTrip = saved.day().tripDay() != com.chunkworks.serfdom.domain.Purse.day(now);
+        var needs = needTrip ? Needs.wants(level, villager) : List.<Shopping.Want>of();
+        var stalls = Stalls.near(level, bed.get(), reach());
+        var wares = needs.isEmpty() ? List.<Peddlers.Ware>of() : Peddlers.near(level, bed.get(), reach(), villager);
+        var offers = new ArrayList<>(offers(level, bed.get(), stalls));
+        for (int i = 0; i < wares.size(); i++) offers.add(wares.get(i).offer(stalls.size() + i, bed.get()));
+        var decision = Shopping.decide(who, now, saved.day(), emeralds, perDay(), needs, offers);
+        if (!decision.day().equals(saved.day())) Purses.set(villager, saved.with(decision.day()));
+        if (decision.trip().isEmpty()) return false;
+        var trip = decision.trip().get();
+        Place place = trip.offer() < stalls.size() ? new AtStall(stalls.get(trip.offer()).getBlockPos())
+                : new AtSeller(wares.get(trip.offer() - stalls.size()).seller().getUUID(), wares.get(trip.offer() - stalls.size()).item());
+        PLANS.put(villager.getUUID(), new Plan(place, trip.need()));
+        return true;
     }
 
     /** effects: the villager's waiting plan, taken. */

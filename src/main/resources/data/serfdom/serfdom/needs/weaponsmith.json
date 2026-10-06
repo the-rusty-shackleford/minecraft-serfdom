@@ -1,3 +1,4 @@
 {"profession": "minecraft:weaponsmith", "needs": [
   {"name": "fuel", "tag": "minecraft:coals", "keep": 8, "per_day": 2},
-  {"name": "iron", "items": ["minecraft:iron_ingot"], "keep": 4, "per_day": 0.5}]}
+  {"name": "iron", "items": ["minecraft:iron_ingot"], "keep": 4, "per_day": 0.5}],
+ "taste": {"tools": 1}}

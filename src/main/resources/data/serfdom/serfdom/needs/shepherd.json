@@ -1,1 +1,2 @@
-{"profession": "minecraft:shepherd", "needs": [{"name": "shears", "items": ["minecraft:shears"], "keep": 1, "per_day": 0.1}]}
+{"profession": "minecraft:shepherd", "needs": [{"name": "shears", "items": ["minecraft:shears"], "keep": 1, "per_day": 0.1}],
+ "taste": {"decor": 1}}

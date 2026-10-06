@@ -70,6 +70,15 @@ public final class SerfdomConfig {
     public static final ModConfigSpec.DoubleValue NEED_BONUS = B
             .comment("What a villager will pay for something it needs, as a multiple of its base value.")
             .defineInRange("need_bonus", 1.5, 0.1, 10.0);
+    public static final ModConfigSpec.DoubleValue CLIMATE_BONUS = B
+            .comment("What a villager will pay for an item from another climate (hot or cold, by its village's biome), as a multiple (D-0006, 4b).")
+            .defineInRange("climate_bonus", 1.5, 0.1, 10.0);
+    public static final ModConfigSpec.DoubleValue TASTE_SPREAD = B
+            .comment("How far a villager's taste for food, tools, decor and luxury runs either side of 1: 0.5 is 0.5 to 1.5.")
+            .defineInRange("taste_spread", 0.5, 0.0, 0.95);
+    public static final ModConfigSpec.IntValue WANTS_EACH = B
+            .comment("The most of any one item a villager wants for its taste, at home.")
+            .defineInRange("wants_each", 3, 0, 64);
     public static final ModConfigSpec.BooleanValue WORKERS = B
             .comment("The workers module: hiring, beds, posts and jobs. Off: owned villagers live as free ones and nobody can hire.")
             .define("workers", true);

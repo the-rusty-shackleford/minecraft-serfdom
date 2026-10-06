@@ -6,6 +6,7 @@ import com.chunkworks.serfdom.domain.Household;
 import com.chunkworks.serfdom.domain.Hunger;
 import com.chunkworks.serfdom.domain.Menu;
 import com.chunkworks.serfdom.domain.Shopping;
+import com.chunkworks.serfdom.domain.Taste;
 import com.chunkworks.serfdom.job.Jobs;
 import com.chunkworks.serfdom.job.Kitchen;
 import com.chunkworks.serfdom.job.RecipeBook;
@@ -42,16 +43,23 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
-/** What villagers need (D-0006). A free villager's needs come from its profession's list in
- * {@code data/<namespace>/serfdom/needs/<name>.json}; a list for {@code "*"} is everyone's and comes
- * first:
+/** What villagers need, and (4b) what each profession leans toward and sells (D-0006). A free
+ * villager's needs come from its profession's file in {@code data/<namespace>/serfdom/needs/<name>.json};
+ * a file for {@code "*"} is everyone's and comes first:
  * <pre>{"profession": "minecraft:farmer", "needs": [
  *   {"name": "hoe", "tag": "minecraft:hoes", "keep": 1, "per_day": 0.125},
- *   {"name": "bone_meal", "items": ["minecraft:bone_meal"], "keep": 8, "per_day": 1}]}
+ *   {"name": "bone_meal", "items": ["minecraft:bone_meal"], "keep": 8, "per_day": 1}],
+ *  "taste": {"food": 0.5, "tools": 0.5},
+ *  "sells": {"minecraft:bread": 3, "minecraft:potato": 8}}
  * {"profession": "*", "needs": [{"name": "food", "food": true, "keep": 4, "per_day": 2}]}</pre>
  * {@code "food": true} is any ready food (D-0005: it fills, nothing harmful, and no heat recipe makes
  * it better). A hired worker's needs are its own: food when its home chest and the canteen hold less
- * than a day's, and what its post shows it lacks. A captive needs nothing it could buy. */
+ * than a day's, and what its post shows it lacks. A captive needs nothing it could buy.
+ *
+ * <p>{@code "taste"} is the profession's lean in each category ({@code food}, {@code tools},
+ * {@code decor}, {@code luxury}), -1 to 1: everyone's and its own add up, held within that.
+ * {@code "sells"} names what a free villager of the profession sells from its own inventory, and how
+ * many of each it keeps; a tag with {@code #}. Every field but the profession may be left out. */
 public final class Needs extends SimpleJsonResourceReloadListener {
     private static final Logger LOG = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().create();
@@ -68,31 +76,79 @@ public final class Needs extends SimpleJsonResourceReloadListener {
                 Codec.intRange(0, 999).fieldOf("keep").forGetter(Entry::keep),
                 Codec.doubleRange(0, 64).fieldOf("per_day").forGetter(Entry::perDay)).apply(i, Entry::new));
     }
-    private record File(String profession, List<Entry> needs) {
+    private static final Codec<Taste.Category> CATEGORY = Codec.STRING.comapFlatMap(s -> {
+        try { return com.mojang.serialization.DataResult.success(Taste.Category.valueOf(s.toUpperCase(java.util.Locale.ROOT))); }
+        catch (IllegalArgumentException e) { return com.mojang.serialization.DataResult.error(() -> "no category " + s); }
+    }, c -> c.name().toLowerCase(java.util.Locale.ROOT));
+
+    private record File(String profession, List<Entry> needs, Map<Taste.Category, Double> taste, Map<String, Integer> sells) {
         static final Codec<File> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("profession").forGetter(File::profession),
-                Entry.CODEC.listOf().fieldOf("needs").forGetter(File::needs)).apply(i, File::new));
+                Entry.CODEC.listOf().optionalFieldOf("needs", List.of()).forGetter(File::needs),
+                Codec.unboundedMap(CATEGORY, Codec.doubleRange(-1, 1)).optionalFieldOf("taste", Map.of()).forGetter(File::taste),
+                Codec.unboundedMap(Codec.STRING, Codec.intRange(0, 9999)).optionalFieldOf("sells", Map.of()).forGetter(File::sells)).apply(i, File::new));
     }
 
     private static volatile Map<String, List<Entry>> lists = Map.of();
+    private static volatile Map<String, Map<Taste.Category, Double>> leans = Map.of();
+    private static volatile Map<String, Map<String, Integer>> sold = Map.of();
     private static final Map<String, List<Household.Need>> RESOLVED = new ConcurrentHashMap<>();
+    private static final Map<String, Map<net.minecraft.world.item.Item, Integer>> SELLS = new ConcurrentHashMap<>();
     private static volatile Set<String> readyFoods;
 
     public Needs() { super(GSON, "serfdom/needs"); }
 
     @Override protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager manager, ProfilerFiller profiler) {
         var out = new HashMap<String, List<Entry>>();
+        var ln = new HashMap<String, Map<Taste.Category, Double>>();
+        var sl = new HashMap<String, Map<String, Integer>>();
         new TreeMap<>(files).forEach((id, json) -> {
             try {
                 var f = File.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
                 out.computeIfAbsent(f.profession(), k -> new ArrayList<>()).addAll(f.needs());
+                f.taste().forEach((c, v) -> ln.computeIfAbsent(f.profession(), k -> new java.util.EnumMap<>(Taste.Category.class)).merge(c, v, Double::sum));
+                sl.computeIfAbsent(f.profession(), k -> new java.util.LinkedHashMap<>()).putAll(f.sells());
             } catch (RuntimeException e) {
                 LOG.error("Serfdom: needs {} left out: {}", id, e.getMessage());
             }
         });
         lists = Map.copyOf(out);
+        var frozen = new HashMap<String, Map<Taste.Category, Double>>();
+        ln.forEach((k, v) -> frozen.put(k, Map.copyOf(v)));
+        leans = Map.copyOf(frozen);
+        var frozenSells = new HashMap<String, Map<String, Integer>>();
+        sl.forEach((k, v) -> frozenSells.put(k, Map.copyOf(v)));
+        sold = Map.copyOf(frozenSells);
         RESOLVED.clear();
+        SELLS.clear();
         readyFoods = null;
+    }
+
+    /** effects: the lean of {@code profession} in each category: everyone's and its own added, held
+     * within -1 to 1 (4b). */
+    public static Map<Taste.Category, Double> lean(VillagerProfession profession) {
+        var id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession).toString();
+        var out = new java.util.EnumMap<Taste.Category, Double>(Taste.Category.class);
+        for (var k : List.of(EVERYONE, id)) leans.getOrDefault(k, Map.of()).forEach((c, v) -> out.merge(c, v, Double::sum));
+        out.replaceAll((c, v) -> Math.clamp(v, -1.0, 1.0));
+        return out;
+    }
+
+    /** effects: what a free villager of {@code profession} sells from its own inventory, and how many
+     * of each it keeps (4b): everyone's and its own, its own winning; an item that does not exist is
+     * left out. */
+    public static Map<net.minecraft.world.item.Item, Integer> sells(VillagerProfession profession) {
+        var id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession).toString();
+        return SELLS.computeIfAbsent(id, k -> {
+            var out = new java.util.LinkedHashMap<net.minecraft.world.item.Item, Integer>();
+            for (var who : List.of(EVERYONE, k))
+                sold.getOrDefault(who, Map.of()).forEach((name, keep) -> {
+                    if (name.startsWith("#")) BuiltInRegistries.ITEM.getTagOrEmpty(TagKey.create(Registries.ITEM, ResourceLocation.parse(name.substring(1)))).forEach(h -> out.put(h.value(), keep));
+                    else BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(name)).ifPresent(item -> out.put(item, keep));
+                });
+            out.remove(net.minecraft.world.item.Items.AIR);
+            return Map.copyOf(out);
+        });
     }
 
     /** effects: the needs of a free villager of {@code profession}: everyone's, then its own. */

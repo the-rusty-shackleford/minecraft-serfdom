@@ -1,1 +1,2 @@
-{"profession": "morevillagers:woodworker", "needs": [{"name": "axe", "tag": "minecraft:axes", "keep": 1, "per_day": 0.125}]}
+{"profession": "morevillagers:woodworker", "needs": [{"name": "axe", "tag": "minecraft:axes", "keep": 1, "per_day": 0.125}],
+ "taste": {"decor": 0.5, "tools": 0.5}}

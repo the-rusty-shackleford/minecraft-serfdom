@@ -30,7 +30,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 
@@ -63,8 +62,7 @@ public final class Kitchen {
                 if (chunk == null) continue;
                 for (var pos : chunk.getBlockEntitiesPos()) {
                     if (pos.distSqr(at) > HOME_REACH * HOME_REACH || (best != null && pos.distSqr(at) >= best.distSqr(at))) continue;
-                    var handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-                    if (handler != null && handler.getSlots() >= Storage.MIN_SLOTS) best = pos.immutable();
+                    if (Storage.storage(level, pos)) best = pos.immutable();
                 }
             }
         return Optional.ofNullable(best);

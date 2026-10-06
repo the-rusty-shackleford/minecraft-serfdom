@@ -56,6 +56,16 @@ public final class ForSaleBlock extends BaseEntityBlock {
         return SHAPES.get(state.getValue(HorizontalDirectionalBlock.FACING));
     }
     @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) { return new ForSaleBlockEntity(pos, state); }
+    /** No mob walks through it: its shape is no full block, so vanilla's default would take it for open
+     * ground. */
+    @Override protected boolean isPathfindable(BlockState state, net.minecraft.world.level.pathfinder.PathComputationType type) { return false; }
+    /** Nor over it: a block it can't walk through, a mob plans to jump onto unless it is a fence, and the
+     * stall's sign makes its top a full block high, within a villager's jump; but nobody can stand on it
+     * past the sign. A villager going from one stall to the next planned straight over the stall between
+     * and stuck there. */
+    @Override public net.minecraft.world.level.pathfinder.PathType getBlockPathType(BlockState state, BlockGetter level, BlockPos pos, @org.jetbrains.annotations.Nullable net.minecraft.world.entity.Mob mob) {
+        return net.minecraft.world.level.pathfinder.PathType.FENCE;
+    }
 
     @Override public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);

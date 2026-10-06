@@ -1,3 +1,4 @@
 {"profession": "minecraft:cleric", "needs": [
   {"name": "bottles", "items": ["minecraft:glass_bottle"], "keep": 4, "per_day": 0.5},
-  {"name": "redstone", "items": ["minecraft:redstone"], "keep": 4, "per_day": 0.5}]}
+  {"name": "redstone", "items": ["minecraft:redstone"], "keep": 4, "per_day": 0.5}],
+ "taste": {"luxury": 1}}

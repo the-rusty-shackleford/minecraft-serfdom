@@ -1,0 +1,16 @@
+{"values": [
+  {"id": "#c:gems/diamond", "required": false},
+  {"id": "#c:gems/amethyst", "required": false},
+  {"id": "#c:ingots/gold", "required": false},
+  {"id": "#c:music_discs", "required": false},
+  {"id": "#c:foods/golden", "required": false},
+  "minecraft:glistering_melon_slice",
+  "minecraft:enchanted_book",
+  "minecraft:name_tag",
+  "minecraft:clock",
+  "minecraft:spyglass",
+  "minecraft:bell",
+  "minecraft:experience_bottle",
+  "minecraft:goat_horn",
+  "minecraft:cake"
+]}

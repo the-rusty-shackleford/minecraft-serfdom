@@ -1,3 +1,4 @@
 {"profession": "minecraft:cartographer", "needs": [
   {"name": "paper", "items": ["minecraft:paper"], "keep": 8, "per_day": 1},
-  {"name": "compass", "items": ["minecraft:compass"], "keep": 1, "per_day": 0.1}]}
+  {"name": "compass", "items": ["minecraft:compass"], "keep": 1, "per_day": 0.1}],
+ "taste": {"decor": 0.5, "luxury": 0.5}}

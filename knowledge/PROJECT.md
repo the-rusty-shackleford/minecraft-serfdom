@@ -1,5 +1,18 @@
 # Serfdom
 
+**0.7.0 (phase 4b, the market's second half, D-0006): built and gated on 2026-10-05. Not released.**
+Gate: `devtools/verification/release-0.7.0.md` (274 JUnit, 87 GameTests eight runs in a row, booth 94
+checks with 50 photos, 27 of 27 mutations; jar sha1 `c9ad1f26`). Built without a new preview, on
+Rusty's word. Climate (the bed's biome; goods from another climate at half again), taste (four
+kinds of goods, 0.5 to 1.5 each, drawn from the UUID, leaning by trade), wants (up to three of an
+item of a liked kind, at home), window shopping (with no need anything in reach sells, a look at each
+stall not yet seen that day), and free villagers selling from their inventory (a farmer's bread). One
+line of D-0006 did not hold as written: "no need" is read as "no need anything in reach sells" (see
+D-0006, "Settled in the build: 4b"). Two 4a defects fixed on the way: a stall counted as storage, and
+villagers planned their way over a stall. Not seen by Rusty: photos 47 to 50. 0.7.0 carries 0.6.0
+whole and ships in its place, with the same two siblings. Phase 4 is done; phase 5 (raids and the base's
+defence) is next in the plan, previewed first.
+
 **0.6.0 (phase 4a, the market, D-0006): built and gated on 2026-10-05. Not released.**
 Gate: `devtools/verification/release-0.6.0.md` (257 JUnit, 80 GameTests, booth 85 checks with 46
 photos, 37 of 37 mutations; jar sha1 `46040d9f`). Rusty's call: day-one purses full (every villager
@@ -38,7 +51,7 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | No remote yet |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md` (all in `devtools/verification/`) |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md` (all in `devtools/verification/`) |
 | Release | Only on Rusty's go, as a new jar in the pack, with Vanilla Wheels 1.11.0 and Village Law 1.1.0 |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
@@ -48,8 +61,8 @@ village ids) and Farmer's Delight 1.3 (tomatoes, rice).
 The villager overhaul in Rusty's spec (`~/Downloads/serfdom-mod-spec.md`), in five phases. Phase 2
 is split as phase 1 was: 2a, the capture, is [D-0003](decisions/D-0003.md); 2b, equipment slots
 and the armour layer, is [D-0004](decisions/D-0004.md). Phase 3, hunger and meals, is
-[D-0005](decisions/D-0005.md). Phase 4, the market, is [D-0006](decisions/D-0006.md): 4a built,
-4b previewed. Phase 1 is [D-0001](decisions/D-0001.md), split by Rusty into:
+[D-0005](decisions/D-0005.md). Phase 4, the market, is [D-0006](decisions/D-0006.md): 4a and 4b
+built. Phase 1 is [D-0001](decisions/D-0001.md), split by Rusty into:
 
 - **1a:** hiring, beds, the Work Post, woodcutting, farming, sorting, need icons, the Worker
   Screen, the chain lead, fence gates.
@@ -88,6 +101,9 @@ Each phase is previewed to Rusty before it is built.
   - 4a: `Purse` (cap, deposit, the start), `Till` (an offer as the purse sees it), `Values` (base
     values), `Household` (a free villager's goods), `Stall`, `Verdict` (at the counter), `Shopping`
     (who, when, which stall), `Ledger`; `Menu` gained the buy step, `WorkerLayout` the purse row.
+  - 4b: `Climate`, `Taste` (the draw, the lean, likes, the favourite, wants), `Peddler` (spare stock,
+    lots in whole emeralds); `Shopping` gained the stalls seen, the look (`browse`) and what a villager
+    does now (`decide`).
 - `src/main`:
   - `Serfdom` (registries), `SerfdomConfig`.
   - `Worker` (the saved attachment) and `Workers` (state, hire, beds, posts, needs, the tool between
@@ -106,6 +122,10 @@ Each phase is previewed to Rusty before it is built.
     `behavior/ShopTime` (core, on free villagers' vanilla brains too) and `behavior/GoShopping`
     (the `serfdom:shop` activity), `mixin/MerchantOfferMixin`, `client/ForSaleScreen`,
     `ForSaleRenderer`, `PurseLabel`.
+  - 4b: `market/Tastes` (taste, climate, kinds and origins by tag, the bonus, what it wants),
+    `market/Peddlers` (free villagers selling, one buyer at a time); `Needs` reads each trade's
+    `taste` and `sells`; `Shoppers.Plan` goes to a stall or a seller, or looks; `Counter.buyFrom`;
+    `Storage.storage` (never a stall); `ForSaleBlock` is a fence to the pathfinder.
   - `behavior/`: `WorkShift`, `FollowOwner`, `KeepBed`, `OpenGates`, `WorkerNavigation`; 2a:
     `Stay`, `CaptiveNight`, `RunHome`.
   - `job/`: `Jobs` (data), `Woodcutting` + `WoodTask`, `Farming` + `CropTask`, `Storage`, `Tools`;
@@ -122,8 +142,10 @@ Each phase is previewed to Rusty before it is built.
     wear (`VillagerWearMixin`), the hat under a helmet (`VillagerModelMixin`, client).
 - `src/gametest`: `Yard` (fixtures), `Huts` (a village with a guard, from Village Law's tests),
   `WorkerGameTests`, `WorkshopGameTests`, `CaptiveGameTests`, `EquipmentGameTests`, `MealGameTests`,
-  `MarketGameTests`, `SerfdomBooth`, `TestMod`. Every batch but the meal batches runs with hunger
-  off, and every batch but the market's with the economy off (`Yard.hour`).
+  `MarketGameTests`, `TasteGameTests`, `SerfdomBooth`, `TestMod`. Every batch but the meal batches
+  runs with hunger off, and every batch but the market's with the economy off (`Yard.hour`). A test
+  that buys at a price near the base value gives its villager a taste (`Yard.villager` with a test of
+  the taste).
 - `devtools/art/art.py` draws every texture; `devtools/sound/work_song.py` renders the captives'
   work song to `run/work_song.wav`.
 
@@ -253,10 +275,32 @@ Each phase is previewed to Rusty before it is built.
   map's listing searches the world for a structure: skip `VillagerTrades.TreasureMapForEmeralds`
   (Villager API builds More Villagers' maps from the same class).
 
+**Met in 4b:**
+- **A block whose collision is no full block is open ground to vanilla's pathfinder,** and a mob plans
+  to jump onto any block it can't walk through unless its path type is a fence
+  (`WalkNodeEvaluator.findAcceptedNode`). The stall's sign made its top a full block high: window
+  shoppers planned straight over the stall between two and stuck on its sign. NeoForge's
+  `getBlockPathType` returning FENCE stops it.
+- **NeoForge's ground navigation lifts a target that is a solid block to the block above.** A walk to a
+  fence-typed stall ends beside it, so arrival must go by distance, as the shopper's 2.5 blocks do. The
+  Work Post can't be a fence: workers' arrival leans on reaching above its pole (1a's gate test failed).
+- **A taste drawn from the UUID touches every test that buys near the base value:** a random taste
+  under 2/3 made 4a's bargains a coin toss. Tests pick a UUID for the taste they need, before the
+  villager is added (two entities with one UUID refuse the second).
+- **A villager needing nothing window-shops every stall in reach,** whoever it is: a seller in a test
+  looked over the dearer stall and wrote a line in its ledger.
+- **A fixture villager hired after the settle ticks takes a free bed near it** in the meantime: hire it
+  as it is made.
+- **A frozen (no AI) mob never lands,** and a ground navigation plans only for a mob on the ground:
+  `createPath` gives nothing.
+- **`level.playSound(null, entity, ...)` posts `PlayLevelSoundEvent.AtEntity`,** not `AtPosition`;
+  `TestMod` hears both.
+- **Python's output to a file is buffered:** a mutation batch's results appear only when it ends.
+
 ## Next
 
-- Rusty vets 0.6.0's photos 37 to 46.
-- Then 4b (D-0006's second half), as 0.7.0.
+- Rusty vets 0.7.0's photos 47 to 50 and 0.6.0's 37 to 46.
+- Then phase 5 (raids and the base's defence), previewed first.
 - Rusty vets 0.5.0's photos 34 to 36 and the hungry icon in 01; 0.4.0's photos 18 to 33 (armour,
   clothes, the robe rule, the child, the trailer, the dressed Worker Screen); 0.3.0's photos 05 and 13 to 17 and the song (`run/work_song.wav`); and
   0.2.0's photos 07 to 12 and the "no station" icon in photo 01.

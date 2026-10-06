@@ -1,1 +1,2 @@
-{"profession": "minecraft:leatherworker", "needs": [{"name": "leather", "items": ["minecraft:leather"], "keep": 4, "per_day": 0.5}]}
+{"profession": "minecraft:leatherworker", "needs": [{"name": "leather", "items": ["minecraft:leather"], "keep": 4, "per_day": 0.5}],
+ "taste": {"decor": 0.5, "luxury": 0.5}}

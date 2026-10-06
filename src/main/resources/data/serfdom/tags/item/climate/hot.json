@@ -1,0 +1,18 @@
+{"values": [
+  "minecraft:cactus",
+  "minecraft:dead_bush",
+  "minecraft:red_sand",
+  {"id": "#minecraft:terracotta", "required": false},
+  {"id": "#minecraft:acacia_logs", "required": false},
+  "minecraft:acacia_planks",
+  "minecraft:acacia_sapling",
+  {"id": "#minecraft:jungle_logs", "required": false},
+  "minecraft:jungle_planks",
+  "minecraft:jungle_sapling",
+  "minecraft:bamboo",
+  "minecraft:cocoa_beans",
+  "minecraft:melon",
+  "minecraft:melon_slice",
+  "minecraft:tropical_fish",
+  "minecraft:pufferfish"
+]}

@@ -23,12 +23,22 @@ import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 /** A post's storage (D-0001): the containers in its area that hold at least
  * {@link #MIN_SLOTS} stacks (chests, barrels, shulker boxes, vaults; not furnaces, hoppers or
- * dispensers), found among the area's block entities and read only when a worker fetches or
- * deposits. */
+ * dispensers, nor a For Sale block, whose stock and proceeds are the stall's), found among the area's
+ * block entities and read only when a worker fetches or deposits. */
 public final class Storage {
     /** A container this size or larger is storage. */
     public static final int MIN_SLOTS = 18;
     private Storage() {}
+
+    /** effects: true iff the block at {@code pos} is storage: a container of at least
+     * {@link #MIN_SLOTS} stacks that is not a For Sale block. Its 27 slots are a stall's stock and
+     * proceeds (D-0006): a worker would put its harvest into the stock and take a stall for its home
+     * chest. */
+    public static boolean storage(ServerLevel level, BlockPos pos) {
+        if (level.getBlockEntity(pos) instanceof com.chunkworks.serfdom.market.ForSaleBlockEntity) return false;
+        var handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+        return handler != null && handler.getSlots() >= MIN_SLOTS;
+    }
 
     /** effects: the item handler at {@code pos}, when its chunk is loaded and it has one. */
     public static Optional<IItemHandler> handler(ServerLevel level, BlockPos pos) {
@@ -47,8 +57,7 @@ public final class Storage {
                 if (chunk == null) continue;
                 for (var pos : chunk.getBlockEntitiesPos()) {
                     if (pos.equals(post) || !Radius.contains(centre, radius, cell(pos))) continue;
-                    var handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-                    if (handler != null && handler.getSlots() >= MIN_SLOTS) out.add(pos.immutable());
+                    if (storage(level, pos)) out.add(pos.immutable());
                 }
             }
         out.sort(Comparator.<BlockPos>comparingDouble(p -> p.distSqr(post)).thenComparingInt(BlockPos::getY).thenComparingInt(BlockPos::getX).thenComparingInt(BlockPos::getZ));

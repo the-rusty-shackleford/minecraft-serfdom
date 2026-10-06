@@ -47,8 +47,10 @@ public final class Purses {
                 Codec.LONG.optionalFieldOf("last_morning", Purse.NEVER).forGetter(s -> s.purse().lastMorning()),
                 Codec.LONG.optionalFieldOf("trip_day", Shopping.NEVER).forGetter(s -> s.day().tripDay()),
                 Codec.LONG.optionalFieldOf("sales_day", Shopping.NEVER).forGetter(s -> s.day().salesDay()),
-                Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("sales", 0).forGetter(s -> s.day().sales())
-        ).apply(i, (e, m, t, sd, s) -> new Saved(new Purse(e, m), new Shopping.Day(t, sd, s))));
+                Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("sales", 0).forGetter(s -> s.day().sales()),
+                Codec.LONG.optionalFieldOf("seen_day", Shopping.NEVER).forGetter(s -> s.day().seenDay()),
+                Codec.LONG.listOf().optionalFieldOf("seen", java.util.List.of()).forGetter(s -> java.util.List.copyOf(s.day().seen()))
+        ).apply(i, (e, m, t, sd, s, vd, v) -> new Saved(new Purse(e, m), new Shopping.Day(t, sd, s, vd, java.util.Set.copyOf(v)))));
         public Saved with(Purse p) { return new Saved(p, day); }
         public Saved with(Shopping.Day d) { return new Saved(purse, d); }
     }

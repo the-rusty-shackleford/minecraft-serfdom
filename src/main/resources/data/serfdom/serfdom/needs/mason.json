@@ -1,1 +1,2 @@
-{"profession": "minecraft:mason", "needs": [{"name": "clay", "items": ["minecraft:clay_ball"], "keep": 8, "per_day": 1}]}
+{"profession": "minecraft:mason", "needs": [{"name": "clay", "items": ["minecraft:clay_ball"], "keep": 8, "per_day": 1}],
+ "taste": {"decor": 1}}

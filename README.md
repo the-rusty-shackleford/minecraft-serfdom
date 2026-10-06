@@ -7,15 +7,15 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.6.0:
+This is 0.7.0:
 - phase 1: woodcutting and farming, cooking and the blacksmith;
 - phase 2a: the capture (D-0003);
 - phase 2b: what a worker wears (D-0004);
 - phase 3: hunger and meals (D-0005);
-- phase 4a: purses, the For Sale block, and villagers who shop (D-0006).
+- phase 4: the market (D-0006): 4a, purses, the For Sale block, and villagers who shop; 4b, climate,
+  taste, wants, window shopping, and villagers selling to villagers.
 
 The rest of the plan:
-- **4b:** climate, taste, wants, window shopping, and villagers selling to villagers (D-0006).
 - **5:** raids and defending the base.
 
 ## Playing it
@@ -234,12 +234,20 @@ it:
   leave it. Broken, it drops its stock and proceeds.
 
 **Who shops, and when.** Free and hired villagers, grown, with a bed: a free villager from 9000 to
-11000, a hired worker in its meeting hours (8000–10000). Once each of those times, when it needs
-something and holds an emerald, it walks to the For Sale block within 64 blocks of its bed that
-sells it cheapest (among those it can afford a sale at), waits its turn (one customer at a time),
-looks it over, and buys or not. At most three sales a day. Captives, children and villagers in
-chains never shop. A villager whose bed is in a village someone bought with Village Deed shops only
-at the owner's stalls and those of the players the owner trusts.
+11000, a hired worker in its meeting hours (8000–10000), while it holds an emerald and has a sale
+left today (at most three a day). Captives, children and villagers in chains never shop. A villager
+whose bed is in a village someone bought with Village Deed shops only at the owner's stalls and those
+of the players the owner trusts.
+
+- **For a need,** once each of those times: it goes to whatever sells its need cheapest within 64
+  blocks of its bed (among those it can afford a sale at): a For Sale block, or a free villager
+  selling (see below). At a stall it waits its turn (one customer at a time), looks it over, and buys
+  or not.
+- **Window shopping.** When nothing in reach sells anything it needs, it walks to the nearest stall
+  it hasn't seen today and looks: something it needs it judges as a need; something it wants (see
+  below) it judges for its taste; anything else gets a glance, and the ledger says "not interested".
+  Then the next stall it hasn't seen, through its social time. Every stall it goes to counts as seen
+  for the day.
 
 - **What a free villager needs.** A free villager keeps a household: what it has at home, saved on
   it (a town house has no chest). Its trade's needs list says how many of each it keeps and how many
@@ -250,13 +258,32 @@ at the owner's stalls and those of the players the owner trusts.
   than a day (20 points), which goes to its home chest; and whatever its post shows it lacks (its
   job's tool, fuel, or what its stock rows are short of), which it puts in the post's chests as its
   job sorts. It spends its own purse on it.
-- **At the stall.** It will pay up to half again an item's base value for something it needs. At or
-  under that it buys; above it, its chance falls in a straight line to nothing at half again more.
-  A purse short of one sale can't afford it. It buys as many sales as cover its need, while it can
-  pay and the stall has them.
+- **What a villager wants.** Every villager has a taste for four kinds of goods (food, tools, decor
+  and luxury): a multiplier from 0.5 to 1.5 for each, drawn from the villager itself, so it never
+  changes and no two are alike, and leaning by trade (a butcher toward food, a mason toward decor, a
+  toolsmith toward tools, a cleric toward luxury...). It likes a kind it rates above 1, and its
+  favourite is the one it rates highest. It wants up to three of anything with a base value in a kind
+  it likes, counted at home (its household, or a worker's home chest; a worker whose home chest is
+  full or missing wants nothing). What it buys for a want goes home with it.
+- **Climate.** A village's climate comes from the biome at a villager's bed: hot (desert, savanna,
+  badlands, jungle), cold (the snowy biomes) or temperate. Some goods come from a hot climate (cactus,
+  terracotta, acacia and jungle wood, bamboo, cocoa, melons, tropical fish...) or a cold one (snow,
+  ice, salmon, goat horns); a villager pays half again for goods from a climate not its own.
+- **What it will pay:** the item's base value × its climate's bonus (1.5 for foreign goods) × its
+  taste for the item's kind (an item of no kind: 1; of two kinds: the higher) × 1.5 if it needs it.
+  At or under that it buys; above it, its chance falls in a straight line to nothing at half again
+  more. A purse short of one sale can't afford it. It buys as many sales as cover what it needs or
+  wants, while it can pay and the stall has them.
 - **What you see.** A bargain (at or under the item's base value): green sparkles and a "yes". Any
-  other purchase: a "yes". Too pricey: the head shake and a "no". Can't afford: it looks at an
-  emerald in its hand. Then it walks home with what it bought in its arms.
+  other purchase: a "yes". Something from its favourite kind: it celebrates and hops besides. Too
+  pricey: the head shake and a "no". Can't afford: it looks at an emerald in its hand. Not interested:
+  a glance, and on to the next. Then it walks home with what it bought in its arms.
+- **Villagers selling to villagers.** A free villager sells what its trade makes from its own
+  inventory: in practice a town farmer's bread, potatoes, carrots and beetroot, keeping three bread,
+  eight potatoes and eight carrots for itself. It sells at the item's base value, in lots worth whole
+  emeralds (six bread for one). A villager who needs it, and finds the farmer cheapest, walks over
+  (following it if it moves), and pays from its purse into the farmer's. Hired workers and captives
+  never sell.
 - **Base values,** in emeralds an item: the data packs' values first, then what villagers' own price
   lists ask or pay for it (the median), then, for food, bread's price for each point it fills.
   Anything else has none, and nobody buys it.
@@ -275,7 +302,7 @@ free.
 |---|---|
 | 0–2000 | Idle |
 | 2000–8000 | Works at its post |
-| 8000–10000 | Meets at a bell, if one is in reach; or goes shopping, when it needs something |
+| 8000–10000 | Meets at a bell, if one is in reach; or goes shopping, for something it needs or to look |
 | 10000–12000 | Idle |
 | 12000 to dawn | Sleeps in its bed |
 
@@ -406,6 +433,9 @@ carries, everything it wears and the chain on it. A cured one is a free villager
 | `shop_reach` | 64 | Blocks from its bed within which a villager shops. |
 | `sales_per_day` | 3 | The most sales a villager buys in a day, meals included. |
 | `need_bonus` | 1.5 | What a villager will pay for something it needs, as a multiple of its base value. |
+| `climate_bonus` | 1.5 | What a villager will pay for goods from a climate not its own, as a multiple. |
+| `taste_spread` | 0.5 | How far a villager's taste for each kind of goods runs either side of 1. |
+| `wants_each` | 3 | The most of one item a villager wants for its taste, at home. |
 | `workers` | true | The whole module: off, nobody can hire and owned villagers live as free ones. |
 
 Jobs are data: `data/<namespace>/serfdom/job/<id>.json`. A file names:
@@ -424,10 +454,16 @@ workshop's stations. The fuel a worker may burn is the item tag `#serfdom:fuel`.
 
 The market's data (D-0006):
 
-- **Needs:** `data/<namespace>/serfdom/needs/<name>.json`, one profession's list (`"*"` is
-  everyone's, first): `{"profession": "minecraft:farmer", "needs": [{"name": "hoe", "tag":
-  "minecraft:hoes", "keep": 1, "per_day": 0.125}]}`. A need names a `tag`, `items`, or `"food":
-  true` (any ready food).
+- **Needs, taste and wares:** `data/<namespace>/serfdom/needs/<name>.json`, one profession's file
+  (`"*"` is everyone's, first): `{"profession": "minecraft:farmer", "needs": [{"name": "hoe", "tag":
+  "minecraft:hoes", "keep": 1, "per_day": 0.125}], "taste": {"food": 0.5, "tools": 0.5}, "sells":
+  {"minecraft:bread": 3}}`. A need names a `tag`, `items`, or `"food": true` (any ready food).
+  `taste` leans each kind of goods from -1 to 1 (everyone's and the profession's add up); `sells` is
+  what a free villager of the trade sells from its inventory, and how many of each it keeps (a tag
+  with `#`). Every field but `profession` may be left out.
+- **Kinds of goods and climates** are item tags: `#serfdom:taste/food`, `/tools`, `/decor`,
+  `/luxury`; `#serfdom:climate/hot`, `/cold`. A village's climate is the biome tags
+  `#serfdom:climate/hot` and `/cold`.
 - **Values:** `data/<namespace>/serfdom/values/<name>.json`, `{"values": {"minecraft:bone_meal":
   0.1, "#c:gems": 3}}`, emeralds an item, a tag with `#`. A value of 0 means nobody buys it. Files
   are read in order of id, entries in file order; an item's own entry beats a tag's.
@@ -546,6 +582,17 @@ The market's data (D-0006):
   - **Values** (`market/Prices`, `domain/Values`) are worked out once the server starts, from the
     data and every profession's price list, tried with a villager never added to the world (a
     treasure map's world search is never run).
+  - **4b:** `domain/Shopping.decide` says what a villager does in its social time (a need first,
+    then a look at a stall it hasn't seen, saved with its purse as `seen`). `market/Tastes` reads a
+    villager's taste (`domain/Taste`, drawn from its UUID by a hash written out in the domain, so it
+    never changes), its climate (`domain/Climate`, the bed's biome) and what it wants.
+    `market/Peddlers` finds free villagers selling (`domain/Peddler`: spare stock, lots in whole
+    emeralds) by an entity search around the buyer's bed, only when it has a need to shop for.
+  - **Storage** never counts a For Sale block, though its handler has 27 slots: neither a worker's
+    home chest nor a post's storage.
+  - **Paths** go around a For Sale block, never over it: it tells the pathfinder it is no open
+    ground and is a fence (NeoForge's `getBlockPathType`). Vanilla would plan to jump onto it, its
+    sign making it a full block high, and a villager could not stand there past the sign.
 - **The armour layer** (`client/VillagerArmourLayer`):
   - Vanilla's `HumanoidArmorLayer` draws on a stand-in player model posed from the villager's
     model each frame, by `domain/Fit`: the helmet lifted 2 pixels about the head's own pivot (and

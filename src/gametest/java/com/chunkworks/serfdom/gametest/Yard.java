@@ -101,6 +101,28 @@ final class Yard {
         return villager;
     }
 
+    /** effects: an adult villager as {@link #villager} makes, whose taste (D-0006, 4b) passes
+     * {@code taste}: a taste is drawn from the UUID, so a UUID is drawn until one does. */
+    static Villager villager(GameTestHelper h, int x, int z, VillagerProfession profession, int level, java.util.function.Predicate<com.chunkworks.serfdom.domain.Taste> taste) {
+        var villager = EntityType.VILLAGER.create(h.getLevel());
+        var at = at(h, x, 1, z);
+        villager.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+        villager.setPersistenceRequired();
+        villager.setVillagerData(villager.getVillagerData().setProfession(profession).setLevel(level));
+        villager.setUUID(tasting(profession, taste));
+        h.getLevel().addFreshEntity(villager);
+        return villager;
+    }
+
+    /** effects: a fresh UUID whose taste, for {@code profession}, passes {@code taste}. */
+    static UUID tasting(VillagerProfession profession, java.util.function.Predicate<com.chunkworks.serfdom.domain.Taste> taste) {
+        for (int i = 0; i < 100_000; i++) {
+            var id = UUID.randomUUID();
+            if (taste.test(com.chunkworks.serfdom.market.Tastes.of(profession, id))) return id;
+        }
+        throw new IllegalStateException("no " + profession + " of that taste in 100000 draws");
+    }
+
     /** effects: {@code player} uses {@code target} with the main hand as the server's packet
      * handler does; NeoForge fires the use event inside {@code interactOn}. */
     static InteractionResult use(ServerPlayer player, Entity target) {
@@ -160,7 +182,13 @@ final class Yard {
     /** effects: {@code owner}'s worker at the yard position, with the bed and the post given, as
      * the Worker Screen and two clicks would give them. */
     static Villager worker(GameTestHelper h, int x, int z, VillagerProfession profession, ServerPlayer owner, BlockPos bed, WorkPostBlockEntity post) {
-        var v = villager(h, x, z, profession, 1);
+        return worker(h, x, z, profession, owner, bed, post, t -> true);
+    }
+
+    /** effects: a worker as {@link #worker} makes, whose taste passes {@code taste}. */
+    static Villager worker(GameTestHelper h, int x, int z, VillagerProfession profession, ServerPlayer owner, BlockPos bed, WorkPostBlockEntity post,
+                           java.util.function.Predicate<com.chunkworks.serfdom.domain.Taste> taste) {
+        var v = villager(h, x, z, profession, 1, taste);
         Workers.hire(h.getLevel(), v, owner, Optional.empty());
         h.assertTrue(Workers.assignBed(h.getLevel(), v, bed) == Workers.Picked.OK, "the bed is given");
         if (post != null) h.assertTrue(Workers.link(h.getLevel(), v, owner, post.getBlockPos()) == Workers.Picked.OK, "the post is linked");

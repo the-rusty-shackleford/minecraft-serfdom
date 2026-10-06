@@ -1,3 +1,5 @@
 {"profession": "minecraft:farmer", "needs": [
   {"name": "hoe", "tag": "minecraft:hoes", "keep": 1, "per_day": 0.125},
-  {"name": "bone_meal", "items": ["minecraft:bone_meal"], "keep": 8, "per_day": 1}]}
+  {"name": "bone_meal", "items": ["minecraft:bone_meal"], "keep": 8, "per_day": 1}],
+ "taste": {"food": 0.5, "tools": 0.5},
+ "sells": {"minecraft:bread": 3, "minecraft:potato": 8, "minecraft:carrot": 8, "minecraft:beetroot": 0}}

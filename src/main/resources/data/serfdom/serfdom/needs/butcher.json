@@ -1,3 +1,4 @@
 {"profession": "minecraft:butcher", "needs": [
   {"name": "fuel", "tag": "minecraft:coals", "keep": 8, "per_day": 1},
-  {"name": "raw_meat", "items": ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:rabbit"], "keep": 4, "per_day": 1}]}
+  {"name": "raw_meat", "items": ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:rabbit"], "keep": 4, "per_day": 1}],
+ "taste": {"food": 1}}

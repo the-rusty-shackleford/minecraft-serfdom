@@ -1,0 +1,15 @@
+{"values": [
+  {"id": "#minecraft:wool_carpets", "required": false},
+  {"id": "#minecraft:banners", "required": false},
+  {"id": "#minecraft:candles", "required": false},
+  {"id": "#minecraft:flowers", "required": false},
+  {"id": "#c:glazed_terracottas", "required": false},
+  "minecraft:painting",
+  "minecraft:item_frame",
+  "minecraft:glow_item_frame",
+  "minecraft:flower_pot",
+  "minecraft:decorated_pot",
+  "minecraft:lantern",
+  "minecraft:soul_lantern",
+  "minecraft:armor_stand"
+]}

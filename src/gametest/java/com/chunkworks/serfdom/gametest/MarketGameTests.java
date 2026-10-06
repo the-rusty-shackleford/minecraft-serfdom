@@ -70,6 +70,9 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("serfdom") @PrefixGameTestTemplate(false)
 public final class MarketGameTests {
     private static final int SETTLE = 5;
+    /** A taste for food at least even (4b): what it will pay for bread it needs is at least half again
+     * its base value, as 4a's tests were written for. */
+    static final java.util.function.Predicate<com.chunkworks.serfdom.domain.Taste> LIKES_FOOD = t -> t.food() >= 1;
 
     @BeforeBatch(batch = "trade") public static void trade(ServerLevel level) { Yard.hour(level, 6000); Yard.economy(); }
     @BeforeBatch(batch = "morning") public static void morning(ServerLevel level) { Yard.hour(level, 100); Yard.economy(); }
@@ -369,7 +372,7 @@ public final class MarketGameTests {
         var owner = Yard.player(h, 2, 2, "baker");
         var bed = Yard.bed(h, 8, 8);
         var s = stall(h, 30, 8, owner, new ItemStack(Items.BREAD), 6, 1, new ItemStack(Items.BREAD, 32));
-        var v = Yard.villager(h, 10, 12, VillagerProfession.FARMER, 2);
+        var v = Yard.villager(h, 10, 12, VillagerProfession.FARMER, 2, LIKES_FOOD);
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> townsman(h, v, bed, 5))
                 .thenWaitUntil(() -> h.assertTrue(stock(s, Items.BREAD) == 26, "a sale of six: " + stock(s, Items.BREAD)))
                 .thenExecute(() -> {
@@ -438,7 +441,7 @@ public final class MarketGameTests {
         var bed = Yard.bed(h, 8, 8);
         var near = stall(h, 12, 4, owner, new ItemStack(Items.BREAD), 4, 1, new ItemStack(Items.BREAD, 32));
         var far = stall(h, 34, 8, owner, new ItemStack(Items.BREAD), 8, 1, new ItemStack(Items.BREAD, 32));
-        var v = Yard.villager(h, 10, 12, VillagerProfession.FARMER, 2);
+        var v = Yard.villager(h, 10, 12, VillagerProfession.FARMER, 2, LIKES_FOOD);
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> {
             townsman(h, v, bed, 5);
             UUID a = UUID.randomUUID(), b = UUID.randomUUID();
@@ -463,8 +466,8 @@ public final class MarketGameTests {
         var bedA = Yard.bed(h, 8, 8);
         var bedB = Yard.bed(h, 8, 14);
         var s = stall(h, 26, 10, owner, new ItemStack(Items.BREAD), 6, 1, new ItemStack(Items.BREAD, 32));
-        var a = Yard.villager(h, 10, 9, VillagerProfession.FARMER, 2);
-        var b = Yard.villager(h, 10, 15, VillagerProfession.FARMER, 2);
+        var a = Yard.villager(h, 10, 9, VillagerProfession.FARMER, 2, LIKES_FOOD);
+        var b = Yard.villager(h, 10, 15, VillagerProfession.FARMER, 2, LIKES_FOOD);
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> { townsman(h, a, bedA, 3); townsman(h, b, bedB, 3); })
                 .thenWaitUntil(() -> h.assertTrue(s.ledger().lines().size() == 2, "two visits: " + s.ledger().lines().size()))
                 .thenExecute(() -> {
@@ -514,6 +517,7 @@ public final class MarketGameTests {
         v.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
         v.setVillagerData(v.getVillagerData().setProfession(VillagerProfession.FARMER).setLevel(2));
         v.setPersistenceRequired();
+        v.setUUID(Yard.tasting(VillagerProfession.FARMER, LIKES_FOOD));
         h.getLevel().addFreshEntity(v);
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> {
             var village = VillageProviders.at(h.getLevel(), hut.centre()).orElseThrow();
@@ -542,7 +546,7 @@ public final class MarketGameTests {
         Yard.chest(h, 32, 30);
         var s = stall(h, 20, 8, owner, new ItemStack(Items.BREAD), 4, 1, new ItemStack(Items.BREAD, 32));
         var cs = stall(h, 40, 30, owner, new ItemStack(Items.BREAD), 4, 1, new ItemStack(Items.BREAD, 32));
-        var worker = Yard.worker(h, 12, 12, VillagerProfession.FARMER, owner, bed, null);
+        var worker = Yard.worker(h, 12, 12, VillagerProfession.FARMER, owner, bed, null, LIKES_FOOD);
         var captive = Yard.villager(h, 34, 34, VillagerProfession.FARMER, 2);
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> {
             Workers.capture(level, captive, owner, new ItemStack(Serfdom.CHAIN_LEAD.get()));
@@ -573,7 +577,7 @@ public final class MarketGameTests {
         var post = Yard.post(h, 24, 24, owner, "woodcutting", 6);
         var chest = Yard.chest(h, 26, 24);
         var s = stall(h, 16, 8, owner, new ItemStack(Items.STONE_AXE), 1, 1, new ItemStack(Items.STONE_AXE), new ItemStack(Items.STONE_AXE));
-        var worker = Yard.worker(h, 10, 12, VillagerProfession.FLETCHER, owner, bed, post);
+        var worker = Yard.worker(h, 10, 12, VillagerProfession.FLETCHER, owner, bed, post, t -> t.tools() >= 1);
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> {
             purse(worker, 5);
             Workers.shiftNeed(worker, Optional.of(Need.NO_TOOL));
