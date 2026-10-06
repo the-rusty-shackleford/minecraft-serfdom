@@ -1,0 +1,24 @@
+{
+  "shots": [
+    {"from": "run/booth/screenshots/serfdom-01-post-and-needs.png", "to": "img/workers.webp"},
+    {"from": "run/booth/screenshots/serfdom-36-worker-screen-hunger.png", "to": "img/worker-screen.webp", "crop": [328, 110, 952, 412], "screen": true},
+    {"from": "run/booth/screenshots/serfdom-03-post-screen.png", "to": "img/work-post.webp", "crop": [404, 238, 876, 480], "screen": true},
+    {"from": "run/booth/screenshots/serfdom-07-smithy-and-kitchen.png", "to": "img/kitchen-and-smithy.webp"},
+    {"from": "run/booth/screenshots/serfdom-12-kitchen-stock-added.png", "to": "img/stock-list.webp", "crop": [340, 203, 940, 514], "screen": true},
+    {"from": "run/booth/screenshots/serfdom-05-chain.png", "to": "img/chain.webp"},
+    {"from": "run/booth/screenshots/serfdom-13-capture-hold.png", "to": "img/capture.webp"},
+    {"from": "run/booth/screenshots/serfdom-14-captive-cuffed.png", "to": "img/captive.webp"},
+    {"from": "run/booth/screenshots/serfdom-16-trailer-rear.png", "to": "img/trailer.webp"},
+    {"from": "run/booth/screenshots/serfdom-18-armour-materials-front.png", "to": "img/armour.webp"},
+    {"from": "run/booth/screenshots/serfdom-26-wardrobe-front.png", "to": "img/wardrobe.webp"},
+    {"from": "run/booth/screenshots/serfdom-33-worker-screen-dressed.png", "to": "img/worker-screen-dressed.webp", "crop": [328, 110, 952, 412], "screen": true},
+    {"from": "run/booth/screenshots/serfdom-35-cooking.png", "to": "img/cooking.webp"},
+    {"from": "run/booth/screenshots/serfdom-37-stall-front.png", "to": "img/stall.webp"},
+    {"from": "run/booth/screenshots/serfdom-43-stall-screen.png", "to": "img/stall-screen.webp", "crop": [464, 140, 816, 392], "screen": true},
+    {"from": "run/booth/screenshots/serfdom-44-ledger.png", "to": "img/ledger.webp", "crop": [280, 140, 1000, 460], "screen": true},
+    {"from": "run/booth/screenshots/serfdom-39-bargain.png", "to": "img/market.webp"},
+    {"from": "run/booth/screenshots/serfdom-51-armed-at-the-chest.png", "to": "img/armed.webp"},
+    {"from": "run/booth/screenshots/serfdom-52-swordsman.png", "to": "img/swordsman.webp"},
+    {"from": "run/booth/screenshots/serfdom-54-gunner.png", "to": "img/gunner.webp"}
+  ]
+}
