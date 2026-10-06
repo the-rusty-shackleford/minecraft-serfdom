@@ -32,7 +32,7 @@ public final class MealTime extends Behavior<Villager> {
         }
         var brain = villager.getBrain();
         if (brain.isActive(Serfdom.MEAL.get()) || brain.isActive(Activity.PANIC) || brain.isActive(Activity.RAID) || brain.isActive(Activity.PRE_RAID)
-                || brain.isActive(Activity.HIDE) || villager.isTrading()) return;
+                || brain.isActive(Activity.HIDE) || brain.isActive(Serfdom.DEFEND.get()) || villager.isTrading()) return;
         if (Appetite.due(level, villager)) brain.setActiveActivityIfPossible(Serfdom.MEAL.get());
     }
 }

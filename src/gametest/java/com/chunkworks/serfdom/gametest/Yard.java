@@ -227,6 +227,8 @@ final class Yard {
      * off too (D-0006): GameTest leaves earlier tests' areas standing, and a worker with an emerald and
      * no food would walk off to a stall another batch left behind. {@link #economy} turns it on. */
     static void hour(net.minecraft.server.level.ServerLevel level, long time) {
+        // A raid test that failed before it stopped its raid would raid this batch too (D-0007).
+        DefenceGameTests.endAll();
         level.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DAYLIGHT).set(false, level.getServer());
         level.setDayTime(time);
         com.chunkworks.serfdom.SerfdomConfig.HUNGER.set(false);

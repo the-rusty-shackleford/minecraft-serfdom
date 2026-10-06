@@ -1,5 +1,17 @@
 # Serfdom
 
+**0.8.0 (phase 5, raids and the base's defence, D-0007): built and gated on 2026-10-05. Not
+released.** Gate: `devtools/verification/release-0.8.0.md` (290 JUnit, 99 GameTests eight runs in a
+row, booth 110 checks with 55 photos, 23 of 23 mutations; jar sha1 `64c9330e`). Rusty's call: workers never take a
+launcher. When a raid comes, owned villagers (hired and captive) arm from their home chest and their
+post's chests (the best ranged weapon they have ammunition for, a melee backup), fight the raid's
+raiders within reach, hold fire with a friend in the line, hide with nothing to fight with, and put
+everything back after. Guns through the Ranged Weapons protocol, reloading loose rounds only: RWM's
+magazines aren't the protocol's (D-0007's build notes). Not seen by Rusty: photos 51 to 55. A
+visual point open for him: a villager's folded arms draw a held weapon lying across them. 0.8.0
+carries 0.7.0 whole and ships in its place, with the same two siblings. The plan's five phases are
+all built.
+
 **0.7.0 (phase 4b, the market's second half, D-0006): built and gated on 2026-10-05. Not released.**
 Gate: `devtools/verification/release-0.7.0.md` (274 JUnit, 87 GameTests eight runs in a row, booth 94
 checks with 50 photos, 27 of 27 mutations; jar sha1 `c9ad1f26`). Built without a new preview, on
@@ -51,7 +63,7 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | No remote yet |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md` (all in `devtools/verification/`) |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md` (all in `devtools/verification/`) |
 | Release | Only on Rusty's go, as a new jar in the pack, with Vanilla Wheels 1.11.0 and Village Law 1.1.0 |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
@@ -62,7 +74,8 @@ The villager overhaul in Rusty's spec (`~/Downloads/serfdom-mod-spec.md`), in fi
 is split as phase 1 was: 2a, the capture, is [D-0003](decisions/D-0003.md); 2b, equipment slots
 and the armour layer, is [D-0004](decisions/D-0004.md). Phase 3, hunger and meals, is
 [D-0005](decisions/D-0005.md). Phase 4, the market, is [D-0006](decisions/D-0006.md): 4a and 4b
-built. Phase 1 is [D-0001](decisions/D-0001.md), split by Rusty into:
+built. Phase 5, raids, is [D-0007](decisions/D-0007.md). Phase 1 is [D-0001](decisions/D-0001.md),
+split by Rusty into:
 
 - **1a:** hiring, beds, the Work Post, woodcutting, farming, sorting, need icons, the Worker
   Screen, the chain lead, fence gates.
@@ -104,6 +117,8 @@ Each phase is previewed to Rusty before it is built.
   - 4b: `Climate`, `Taste` (the draw, the lean, likes, the favourite, wants), `Peddler` (spare stock,
     lots in whole emeralds); `Shopping` gained the stalls seen, the look (`browse`) and what a villager
     does now (`decide`).
+  - 5: `Armoury` (what to take), `Defence` (who musters, the next step, the hand, reach, a reload, a
+    blow's cooldown), `LineOfFire`.
 - `src/main`:
   - `Serfdom` (registries), `SerfdomConfig`.
   - `Worker` (the saved attachment) and `Workers` (state, hire, beds, posts, needs, the tool between
@@ -126,6 +141,10 @@ Each phase is previewed to Rusty before it is built.
     `market/Peddlers` (free villagers selling, one buyer at a time); `Needs` reads each trade's
     `taste` and `sells`; `Shoppers.Plan` goes to a stall or a seller, or looks; `Counter.buyFrom`;
     `Storage.storage` (never a stall); `ForSaleBlock` is a fence to the pathfinder.
+  - 5: `defence/` (`Defenders` the module: the raid, the facts, targets, listeners; `Armouries` the
+    chests; `Arms` the `serfdom:arms` attachment), `behavior/RaidDuty` (core), `behavior/Defend` (the
+    `serfdom:defend` activity), `behavior/Unless` (vanilla's panic and raid triggers, skipped while
+    defending), `compat/GunsCompat` (the Ranged Weapons protocol, compile only).
   - `behavior/`: `WorkShift`, `FollowOwner`, `KeepBed`, `OpenGates`, `WorkerNavigation`; 2a:
     `Stay`, `CaptiveNight`, `RunHome`.
   - `job/`: `Jobs` (data), `Woodcutting` + `WoodTask`, `Farming` + `CropTask`, `Storage`, `Tools`;
@@ -142,7 +161,7 @@ Each phase is previewed to Rusty before it is built.
     wear (`VillagerWearMixin`), the hat under a helmet (`VillagerModelMixin`, client).
 - `src/gametest`: `Yard` (fixtures), `Huts` (a village with a guard, from Village Law's tests),
   `WorkerGameTests`, `WorkshopGameTests`, `CaptiveGameTests`, `EquipmentGameTests`, `MealGameTests`,
-  `MarketGameTests`, `TasteGameTests`, `SerfdomBooth`, `TestMod`. Every batch but the meal batches
+  `MarketGameTests`, `TasteGameTests`, `DefenceGameTests`, `SerfdomBooth`, `TestMod`. Every batch but the meal batches
   runs with hunger off, and every batch but the market's with the economy off (`Yard.hour`). A test
   that buys at a price near the base value gives its villager a taste (`Yard.villager` with a test of
   the taste).
@@ -297,10 +316,34 @@ Each phase is previewed to Rusty before it is built.
   `TestMod` hears both.
 - **Python's output to a file is buffered:** a mutation batch's results appear only when it ends.
 
+**Met in 5:**
+- **Villagers have no attack damage attribute,** and `Mob.doHurtTarget` throws without one: the
+  defence adds a fist's (1) to the villager type. Removing it crashes the server at the first blow,
+  so it is the one rule the mutation pass leaves out.
+- **Villagers' brains hold no attack target** (`Villager.MEMORY_TYPES`): vanilla's melee behaviours
+  can't run on them, and the defence keeps its own target, as the shopping trip does.
+- **`KeepBed` puts a worker's hand away whenever it isn't at work,** the tool's rule since 1a: it took a
+  defender's sword a few ticks after it armed. `Workers.stash` leaves the defence's weapon alone.
+- **A skeleton's aim (a fifth of the distance up) is for 1.6-speed arrows:** at a full draw's 3.0 every
+  arrow went over the head. The lift is gravity's drop over the flight.
+- **A raid's countdown to its first wave runs only while it has no raiders alive,** so raiders joined
+  by hand hold its own waves back; a test stops its raid, or a wave reaches a later test. Raids within
+  96 blocks are one raid: each raid test stands alone in its batch.
+- **The Raid Omen's particles swarm about the player that carries it,** and creating a raid by hand
+  doesn't take the effect away: the booth's camera wore it until it was removed.
+- **RWM's magazines aren't protocol ammo stores** (no `AMMO_STORE` capability, no profile names one).
+- **A villager set free gets vanilla's brain back,** so nothing of the defence runs on it after:
+  `Workers.free` drops what it took. A rule that only an owned brain can reach can't be tested on a free
+  villager; the mutation pass showed it by failing to fail.
+- **One unexplained failure:** once, under mutation batch `b`, the hiding test's bow was not back in its
+  chest by the test's end though the put-back had finished; 13 runs since have passed, and the
+  put-back now logs what it puts where (`release-0.8.0.md`).
+
 ## Next
 
-- Rusty vets 0.7.0's photos 47 to 50 and 0.6.0's 37 to 46.
-- Then phase 5 (raids and the base's defence), previewed first.
+- Rusty vets 0.8.0's photos 51 to 55 (and says whether a weapon across folded arms will do), 0.7.0's
+  47 to 50 and 0.6.0's 37 to 46.
+- RWM's magazines as protocol ammo stores, if Rusty wants defenders to use them: a change to RWM.
 - Rusty vets 0.5.0's photos 34 to 36 and the hungry icon in 01; 0.4.0's photos 18 to 33 (armour,
   clothes, the robe rule, the child, the trailer, the dressed Worker Screen); 0.3.0's photos 05 and 13 to 17 and the song (`run/work_song.wav`); and
   0.2.0's photos 07 to 12 and the "no station" icon in photo 01.

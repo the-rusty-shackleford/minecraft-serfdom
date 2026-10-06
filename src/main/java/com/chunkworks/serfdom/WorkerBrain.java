@@ -31,7 +31,8 @@ import net.minecraft.world.entity.schedule.ScheduleBuilder;
 /** An owned villager's brain (D-0001, D-0003): vanilla's packages without the behaviours that claim
  * a workstation or a bed, take or reset a profession, or walk to a village, plus the worker's own
  * activities (work, follow, and for captives stay, held and escape; the meal, D-0005; the shop,
- * D-0006), on a schedule that follows its state. Free villagers keep vanilla's brain; so do owned children until they grow up. */
+ * D-0006; the defence, D-0007), on a schedule that follows its state. Out defending, vanilla's panic
+ * and raid triggers leave it be. Free villagers keep vanilla's brain; so do owned children until they grow up. */
 public final class WorkerBrain {
     private static final float SPEED = 0.5F;
     private WorkerBrain() {}
@@ -104,6 +105,7 @@ public final class WorkerBrain {
         brain.addActivity(Serfdom.ESCAPE.get(), escape());
         brain.addActivity(Serfdom.MEAL.get(), ImmutableList.of(Pair.of(5, new com.chunkworks.serfdom.behavior.HaveMeal()), look()));
         brain.addActivity(Serfdom.SHOP.get(), com.chunkworks.serfdom.market.Shoppers.shop());
+        brain.addActivity(Serfdom.DEFEND.get(), ImmutableList.of(Pair.of(5, new com.chunkworks.serfdom.behavior.Defend())));
         brain.setCoreActivities(ImmutableSet.of(Activity.CORE));
         brain.setDefaultActivity(Activity.IDLE);
         brain.setActiveActivityIfPossible(Activity.IDLE);
@@ -120,10 +122,10 @@ public final class WorkerBrain {
                 Pair.of(0, InteractWithDoor.create()),
                 Pair.of(0, new OpenGates()),
                 Pair.of(0, new LookAtTargetSink(45, 90)),
-                Pair.of(0, new VillagerPanicTrigger()),
+                Pair.of(0, new com.chunkworks.serfdom.behavior.Unless<Villager>(new VillagerPanicTrigger(), com.chunkworks.serfdom.defence.Defenders::defending)),
                 Pair.of(0, WakeUp.create()),
                 Pair.of(0, ReactToBell.create()),
-                Pair.of(0, SetRaidStatus.create()),
+                Pair.of(0, new com.chunkworks.serfdom.behavior.Unless<Villager>(cast(SetRaidStatus.create()), com.chunkworks.serfdom.defence.Defenders::defending)),
                 Pair.of(1, new MoveToTargetSink()),
                 Pair.of(3, new LookAndFollowTradingPlayerSink(SPEED)),
                 Pair.of(5, GoToWantedItem.create(SPEED, false, 4)),
@@ -131,8 +133,13 @@ public final class WorkerBrain {
                 Pair.of(10, new KeepBed()),
                 Pair.of(10, new CaptiveNight()),
                 Pair.of(10, new com.chunkworks.serfdom.behavior.MealTime()),
-                Pair.of(10, new com.chunkworks.serfdom.behavior.ShopTime()));
+                Pair.of(10, new com.chunkworks.serfdom.behavior.ShopTime()),
+                Pair.of(10, new com.chunkworks.serfdom.behavior.RaidDuty()));
     }
+
+    /** effects: vanilla's behaviour for any living entity, as one for a villager. */
+    @SuppressWarnings("unchecked")
+    private static BehaviorControl<Villager> cast(BehaviorControl<? super Villager> b) { return (BehaviorControl<Villager>) b; }
 
     /** Vanilla's rest package without the walk to the nearest free bed or the nearest village, and
      * without giving the bed up when somebody else lies in it: a worker sleeps in the bed it was

@@ -40,7 +40,8 @@ public final class ShopTime extends Behavior<Villager> {
     static boolean busy(Villager villager) {
         var brain = villager.getBrain();
         for (var a : new Activity[]{Activity.PANIC, Activity.RAID, Activity.PRE_RAID, Activity.HIDE}) if (brain.isActive(a)) return true;
-        if (brain.isActive(Serfdom.SHOP.get()) || brain.isActive(Serfdom.MEAL.get()) || brain.isActive(Serfdom.HELD.get()) || brain.isActive(Serfdom.ESCAPE.get())) return true;
+        if (brain.isActive(Serfdom.SHOP.get()) || brain.isActive(Serfdom.MEAL.get()) || brain.isActive(Serfdom.HELD.get()) || brain.isActive(Serfdom.ESCAPE.get())
+                || brain.isActive(Serfdom.DEFEND.get())) return true;
         return villager.isTrading() || villager.isSleeping() || villager.isPassenger() || Workers.of(villager).cuffed();
     }
 }

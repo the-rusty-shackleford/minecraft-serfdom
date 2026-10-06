@@ -38,7 +38,8 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
  * synced need, the record of placed logs, a worker's activities, the Worker Screen's menu, the
  * server config, the job data, and the events that hire, assign, link and keep the post's storage
  * index; and (D-0006) the For Sale block, its menu and point of interest, every villager's purse,
- * household and basket, the shop activity, and the economy's listeners. */
+ * household and basket, the shop activity, and the economy's listeners; and (D-0007) the defence
+ * activity, a defender's arms, and the defence's listeners. */
 @Mod(Serfdom.ID)
 public final class Serfdom {
     public static final String ID = "serfdom";
@@ -96,6 +97,10 @@ public final class Serfdom {
             () -> AttachmentType.builder(() -> new com.chunkworks.serfdom.market.Baskets.Basket(java.util.List.of(), com.chunkworks.serfdom.domain.Shopping.Dest.HOME))
                     .serialize(com.chunkworks.serfdom.market.Baskets.Basket.CODEC, b -> !b.empty()).build());
 
+    /** What a defender took from its chests (D-0007), saved so a reload or an unload loses nothing. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<com.chunkworks.serfdom.defence.Arms>> ARMS = ATTACHMENTS.register("arms",
+            () -> AttachmentType.builder(() -> com.chunkworks.serfdom.defence.Arms.NONE).serialize(com.chunkworks.serfdom.defence.Arms.CODEC, a -> !a.blank()).build());
+
     /** Whether the chain is on a villager (D-0003); synced to the players that see it, so their
      * game draws the cuffs and knows a click on the trailer is a load. Never saved: the worker's
      * state is what is saved, and this is set from it as the villager joins. */
@@ -118,6 +123,9 @@ public final class Serfdom {
 
     /** A shopping trip (D-0006): it takes over a villager's day as a meal does, and gives it back. */
     public static final DeferredHolder<Activity, Activity> SHOP = ACTIVITIES.register("shop", () -> new Activity("serfdom_shop"));
+
+    /** A worker's defence in a raid (D-0007): arming, fighting, standing by, putting back. */
+    public static final DeferredHolder<Activity, Activity> DEFEND = ACTIVITIES.register("defend", () -> new Activity("serfdom_defend"));
 
     /** One note of a captive's work song: the villager's own hum, heard within eight blocks. */
     public static final DeferredHolder<net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundEvent> HUM = SOUNDS.register("captive.hum",
@@ -165,6 +173,7 @@ public final class Serfdom {
         com.chunkworks.serfdom.compat.LawCompat.listen();
         com.chunkworks.serfdom.compat.WheelsCompat.register();
         com.chunkworks.serfdom.market.Market.listen(bus);
+        com.chunkworks.serfdom.defence.Defenders.listen(bus);
     }
 
     /** Professions no villager can be hired with. */

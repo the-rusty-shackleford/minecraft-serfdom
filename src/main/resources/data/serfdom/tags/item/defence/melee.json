@@ -1,0 +1,5 @@
+{"values": [
+  {"id": "#c:tools/melee_weapon", "required": false},
+  {"id": "#minecraft:swords", "required": false},
+  {"id": "#minecraft:axes", "required": false}
+]}

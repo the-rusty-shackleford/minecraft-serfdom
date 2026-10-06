@@ -55,8 +55,10 @@ import org.slf4j.LoggerFactory;
  * cooking at a smoker, and the Worker Screen's drumsticks; and (D-0006) the market: the bread
  * stall's front and label, three stalls with a shopper each (a bargain, a head shake, a look at one
  * emerald, a loaf carried home), the stall's screen and ledger, the Worker Screen's purse, and the
- * trade screen's purse beside a sold-out trade. Every step also checks in code what it
- * can. This fixture never ships. */
+ * trade screen's purse beside a sold-out trade; (D-0006, 4b) a window shopper's glance and its
+ * favourite's hop, a purchase from a farmer, the ledger's "not interested"; and (D-0007) a raid on the
+ * base: a defender armed at its chest, a swordsman's blow, an arrow in flight, a gunner's hit, and a
+ * chest with its bow put back. Every step also checks in code what it can. This fixture never ships. */
 @EventBusSubscriber(modid = "serfdom_gametest", value = Dist.CLIENT)
 public final class SerfdomBooth {
     private static final Logger LOG = LoggerFactory.getLogger("Serfdom booth");
@@ -81,6 +83,13 @@ public final class SerfdomBooth {
     private static int browser, buyer, peddler;
     private static volatile int glanced;
     private static boolean glanceShot, hopShot, peddleShot;
+    // D-0007: a raid on the base.
+    private static BlockPos keep;
+    private static final BlockPos[] ARMOURIES = new BlockPos[3];
+    private static final int[] DEFENDERS = new int[3], RAIDERS = new int[3];
+    private static net.minecraft.world.entity.raid.Raid raid;
+    private static volatile boolean putBack;
+    private static boolean armedShot, swordShot, arrowShot, gunShot, stopped;
 
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if (!Boolean.getBoolean("serfdom.booth")) return;
@@ -814,7 +823,97 @@ public final class SerfdomBooth {
                     photo(mc, "50-ledger-not-interested");
                     mc.setScreen(null);
                 }
-                case 3260 -> {
+                // ---- 5: a raid on the base (D-0007) ----
+                // 88 blocks past the 4b scene, out of its simulation distance.
+                case 3260 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    l.setDayTime(6000);
+                    keep = bazaar.offset(88, 0, 0);
+                    for (int x = -6; x <= 20; x++) for (int z = -8; z <= 20; z++) {
+                        l.setBlockAndUpdate(keep.offset(x, -1, z), Blocks.GRASS_BLOCK.defaultBlockState());
+                        for (int y = 0; y < 5; y++) l.setBlockAndUpdate(keep.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                    }
+                    var foot = Blocks.RED_BED.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.WEST);
+                    // Three rows, seen from the side: on the west a bed and a chest each (a sword; a bow and
+                    // arrows; a pistol and rounds), a raider facing them on the east.
+                    ItemStack[][] stocks = {
+                            {new ItemStack(Items.IRON_SWORD)},
+                            {new ItemStack(Items.BOW), new ItemStack(Items.ARROW, 24)},
+                            {new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("rangedweaponsmod:pistol"))),
+                                    new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("rangedweaponsmod:small_round")), 30)}};
+                    for (int i = 0; i < 3; i++) {
+                        var bed = keep.offset(-4, 0, 4 * i - 2);
+                        l.setBlockAndUpdate(bed.east(), foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.FOOT));
+                        l.setBlockAndUpdate(bed, foot.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.HEAD));
+                        ARMOURIES[i] = keep.offset(-1, 0, 4 * i - 3);
+                        l.setBlockAndUpdate(ARMOURIES[i], Blocks.CHEST.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.EAST));
+                        var chest = (net.minecraft.world.Container) l.getBlockEntity(ARMOURIES[i]);
+                        for (int s = 0; s < stocks[i].length; s++) chest.setItem(s, stocks[i][s]);
+                    }
+                });
+                // A few ticks on: vanilla registers a bed as a home in a task of its own.
+                case 3266 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    VillagerProfession[] trades = {VillagerProfession.FARMER, VillagerProfession.FLETCHER, VillagerProfession.WEAPONSMITH};
+                    for (int i = 0; i < 3; i++) {
+                        var v = EntityType.VILLAGER.create(l);
+                        v.moveTo(keep.getX() + 1.5, keep.getY(), keep.getZ() + 4 * i - 1.5, -90F, 0F);
+                        v.setVillagerData(v.getVillagerData().setProfession(trades[i]).setLevel(2));
+                        v.setPersistenceRequired();
+                        l.addFreshEntity(v);
+                        Workers.hire(l, v, p, Optional.empty());
+                        check(Workers.assignBed(l, v, keep.offset(-4, 0, 4 * i - 2)) == Workers.Picked.OK, "a bed for defender " + i);
+                        DEFENDERS[i] = v.getId();
+                    }
+                    p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.RAID_OMEN, 600, 0));
+                    raid = l.getRaids().createOrExtendRaid(p, keep.offset(-4, 0, 2));
+                    check(raid != null, "a raid starts at the base");
+                    // The omen spent: its particles would swarm about the camera.
+                    p.removeEffect(net.minecraft.world.effect.MobEffects.RAID_OMEN);
+                    // Frozen raiders, each in its row on the east, facing its defender.
+                    EntityType<?>[] kinds = {EntityType.VINDICATOR, EntityType.PILLAGER, EntityType.PILLAGER};
+                    for (int i = 0; i < 3; i++) {
+                        var r = (net.minecraft.world.entity.raid.Raider) kinds[i].create(l);
+                        r.setNoAi(true);
+                        raid.joinRaid(1, r, keep.offset(i == 0 ? 9 : 13, -1, 4 * i - 2), false);
+                        r.setYRot(90F);
+                        r.setYHeadRot(90F);
+                        r.setYBodyRot(90F);
+                        RAIDERS[i] = r.getId();
+                    }
+                    p.teleportTo(l, keep.getX() + 6.5, keep.getY() + 0.4, keep.getZ() + 12.5, 180F, 10F);
+                    mc.execute(() -> mc.options.hideGui = true);
+                });
+                case 3900 -> {
+                    check(armedShot, "a defender was photographed armed at its chest");
+                    check(swordShot, "the swordsman's blow was photographed");
+                    check(arrowShot, "an arrow in flight was photographed");
+                    check(gunShot, "the gunner's hit was photographed");
+                    check(stopped, "the raid stopped");
+                }
+                case 4100 -> server(mc, p -> {
+                    var l = p.serverLevel();
+                    for (var id : DEFENDERS) {
+                        var v = (Villager) l.getEntity(id);
+                        check(v != null && v.getMainHandItem().isEmpty() && !com.chunkworks.serfdom.defence.Defenders.arms(v).carries(), "defender " + id + " put everything back");
+                    }
+                    var swords = (net.minecraft.world.Container) l.getBlockEntity(ARMOURIES[0]);
+                    check(swords.countItem(Items.IRON_SWORD) == 1, "the sword back in its chest");
+                    var bows = (net.minecraft.world.Container) l.getBlockEntity(ARMOURIES[1]);
+                    check(bows.countItem(Items.BOW) == 1 && bows.countItem(Items.ARROW) < 24, "the bow back, arrows spent: " + bows.countItem(Items.ARROW));
+                    putBack = true;
+                    mc.execute(() -> mc.options.hideGui = false);
+                    p.teleportTo(l, ARMOURIES[1].getX() + 2.5, ARMOURIES[1].getY(), ARMOURIES[1].getZ() + 0.5, 90F, 30F);
+                    p.openMenu(new net.minecraft.world.SimpleMenuProvider((cid, inv, who) -> net.minecraft.world.inventory.ChestMenu.threeRows(cid, inv, bows),
+                            net.minecraft.network.chat.Component.translatable("container.chest")));
+                });
+                case 4120 -> {
+                    var screen = screen(mc, net.minecraft.client.gui.screens.inventory.ContainerScreen.class, "the archer's chest opens");
+                    check(putBack && screen.getMenu().getContainer().countItem(Items.BOW) == 1, "the client sees the bow back in the chest");
+                    photo(mc, "55-put-back");
+                    mc.setScreen(null);
+                }
+                case 4140 -> {
                     LOG.info("serfdom booth: COMPLETE");
                     mc.stop();
                 }
@@ -822,6 +921,7 @@ public final class SerfdomBooth {
                     if (tick > 1060 && tick < 1500) meals(mc);
                     if (tick > 1595 && tick < 2300) market(mc);
                     if (tick > 2410 && tick < 3200) bazaar(mc);
+                    if (tick > 3270 && tick < 3900) defence(mc);
                     if (tick > 905 && tick < 950) server(mc, p -> {
                         var v = p.serverLevel().getEntity(walker);
                         if (v != null) v.setPos(v.getX() + 0.12, v.getY(), v.getZ());
@@ -967,6 +1067,45 @@ public final class SerfdomBooth {
         if (!peddleShot && b.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND).is(Items.BREAD) && b.distanceTo(c) < 3.5) {
             photo(mc, "49-bought-from-a-farmer");
             peddleShot = true;
+        }
+    }
+
+    /** effects: the raid photographs (D-0007), each taken as the client first sees it: a defender at
+     * its chest with its weapon just taken, the swordsman's blow landing on the vindicator, an arrow in
+     * flight, and the gunner's pillager hit. */
+    private static void defence(Minecraft mc) {
+        Villager[] d = new Villager[3];
+        net.minecraft.world.entity.LivingEntity[] r = new net.minecraft.world.entity.LivingEntity[3];
+        for (int i = 0; i < 3; i++) {
+            d[i] = mc.level.getEntity(DEFENDERS[i]) instanceof Villager v ? v : null;
+            r[i] = mc.level.getEntity(RAIDERS[i]) instanceof net.minecraft.world.entity.LivingEntity e ? e : null;
+            if (d[i] == null) return;
+        }
+        if (!armedShot && d[1].getMainHandItem().is(Items.BOW) && d[1].distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(ARMOURIES[1])) < 9) {
+            photo(mc, "51-armed-at-the-chest");
+            armedShot = true;
+        }
+        if (!swordShot && r[0] != null && r[0].hurtTime > 0 && d[0].getMainHandItem().is(Items.IRON_SWORD) && d[0].distanceTo(r[0]) < 3.5) {
+            photo(mc, "52-swordsman");
+            swordShot = true;
+        }
+        if (!arrowShot && !mc.level.getEntitiesOfClass(net.minecraft.world.entity.projectile.Arrow.class, new net.minecraft.world.phys.AABB(keep).inflate(24),
+                a -> !a.onGround() && a.getDeltaMovement().lengthSqr() > 0.5).isEmpty()) {
+            photo(mc, "53-arrow-in-flight");
+            arrowShot = true;
+        }
+        if (!gunShot && r[2] != null && r[2].hurtTime > 0 && !d[2].getMainHandItem().isEmpty() && !d[2].getMainHandItem().is(Items.BOW)) {
+            photo(mc, "54-gunner");
+            gunShot = true;
+        }
+        // Done: the raid stopped at once, before a wave of its own (300 ticks after its last raider falls)
+        // can come for the camera.
+        if (armedShot && swordShot && arrowShot && gunShot && !stopped) {
+            stopped = true;
+            server(mc, p -> {
+                for (var x : raid.getAllRaiders()) x.discard();
+                raid.stop();
+            });
         }
     }
 

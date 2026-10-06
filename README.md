@@ -7,16 +7,16 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.7.0:
+This is 0.8.0:
 - phase 1: woodcutting and farming, cooking and the blacksmith;
 - phase 2a: the capture (D-0003);
 - phase 2b: what a worker wears (D-0004);
 - phase 3: hunger and meals (D-0005);
 - phase 4: the market (D-0006): 4a, purses, the For Sale block, and villagers who shop; 4b, climate,
-  taste, wants, window shopping, and villagers selling to villagers.
+  taste, wants, window shopping, and villagers selling to villagers;
+- phase 5: raids and defending the base (D-0007).
 
-The rest of the plan:
-- **5:** raids and defending the base.
+That is the whole of the plan.
 
 ## Playing it
 
@@ -290,6 +290,31 @@ of the players the owner trusts.
 - **Your workers never sell your goods:** what is in your posts' chests stays yours. Sell through a
   stall; your workers shop there like anyone.
 
+### Raids
+
+A base with owned villagers in their beds is a village to a raid, as any village is. When a raid
+starts (the bell, before the first wave), every owned villager, hired or captive, grown, out of chains
+and not running home, arms itself from its home chest and its post's chests:
+
+- **What it takes:** the best ranged weapon it has ammunition for (a gun, a crossbow or a bow), with up
+  to 64 rounds or arrows; and the best melee weapon (a sword, an axe, a mace, a trident) as a backup.
+  Best is the most damage a second, and a ranged weapon with ammunition always comes first: villagers
+  are fragile. Workers sharing a chest take first come, first served.
+- **Never a launcher:** the rocket launcher stays in the chest. Its rockets would blow holes in your
+  base.
+- **Guns** reload from loose rounds the gun takes. Magazines stay in the chest: Ranged Weapons Mod's
+  magazines aren't the protocol's yet.
+- **Fighting:** it goes for the raiders it can see within 32 blocks, never chasing past 48 blocks
+  from its post or bed. A bow draws as a player's does, a crossbow charges, a gun fires at its rate from
+  its range; a sword hits as in a player's hand. It never shoots while you, a villager, a golem, a guard
+  or a pet is within a block of its line of fire.
+- **Out of ammunition** it draws its melee weapon; with none, it hides as vanilla's villagers do. One
+  with nothing to fight with hides from the start. Free villagers always hide.
+- **After the raid** it puts each weapon and what ammunition is left back in the chest it came from
+  (else its home chest, else on the ground) and goes back to its day. Armour stays on.
+- **While it defends** it doesn't panic, eat, shop or trade. If it dies, or is set free, freed by
+  the law or runs away, it drops what it took where it stands.
+
 ### Children
 
 A child of two villagers you own (hired) is yours, hired, and keeps the bed it was born into. It
@@ -436,6 +461,9 @@ carries, everything it wears and the chain on it. A cured one is a free villager
 | `climate_bonus` | 1.5 | What a villager will pay for goods from a climate not its own, as a multiple. |
 | `taste_spread` | 0.5 | How far a villager's taste for each kind of goods runs either side of 1. |
 | `wants_each` | 3 | The most of one item a villager wants for its taste, at home. |
+| `defence` | true | Owned villagers arm from their chests in a raid. Off: they hide as vanilla's do. |
+| `defence_reach` | 48 | Blocks from its post or bed past which a defender never chases a raider. |
+| `ammo_carried` | 64 | The most arrows or rounds a defender carries out of its chests. |
 | `workers` | true | The whole module: off, nobody can hire and owned villagers live as free ones. |
 
 Jobs are data: `data/<namespace>/serfdom/job/<id>.json`. A file names:
@@ -593,6 +621,19 @@ The market's data (D-0006):
   - **Paths** go around a For Sale block, never over it: it tells the pathfinder it is no open
     ground and is a fence (NeoForge's `getBlockPathType`). Vanilla would plan to jump onto it, its
     sign making it a full block high, and a villager could not stand there past the sign.
+- **Raids** (D-0007):
+  - A core behaviour (`RaidDuty`) turns an owned villager's brain to the `serfdom:defend` activity
+    when a raid is on where it stands (vanilla's own `getRaidAt`). The defence (`Defend`) asks
+    `domain/Defence` what to do every half second: arm, fight, stand by, hide, put back.
+  - What to take is `domain/Armoury`, read off the chests by `defence/Armouries`. What it carries is
+    saved on it (`serfdom:arms`, `defence/Arms`), each thing with the chest it came from.
+  - Guns go through the Ranged Weapons protocol (`compat/GunsCompat`, compiled against it, never
+    nested); a gun's shot is the protocol's, aimed eye to middle.
+  - The line of fire is pure (`domain/LineOfFire`): a friend's box grown by a block, against the
+    segment.
+  - Villagers get an attack damage attribute of 1, a fist's, so a sword hits as in a player's hand.
+  - Out defending, vanilla's panic and raid triggers are wrapped (`Unless`) so they never take its
+    brain from it.
 - **The armour layer** (`client/VillagerArmourLayer`):
   - Vanilla's `HumanoidArmorLayer` draws on a stand-in player model posed from the villager's
     model each frame, by `domain/Fit`: the helmet lifted 2 pixels about the head's own pivot (and
@@ -606,7 +647,7 @@ The market's data (D-0006):
 
 Village Deed, Farmer's Delight, Ranged Weapons Mod, Thief, Village Law 1.1+ and Vanilla Wheels
 1.11+ are optional: without them there are no bought villages (and no stalls barred from one); no tomatoes, rice, pot, stove or
-board; no weapons workbench; no crime in a capture; no case for it; and no trailer. Carried, the
+board; no weapons workbench and no guns in a raid; no crime in a capture; no case for it; and no trailer. Carried, the
 inventory protocol, is nested in the jar.
 
 ## Building
@@ -617,8 +658,8 @@ inventory protocol, is nested in the jar.
 
 This runs the JUnit domain tests, the GameTests and the photo booth.
 
-- Carried comes from mavenLocal: run `./gradlew publishToMavenLocal` in `minecraft-carried`
-  first.
+- Carried and the Ranged Weapons protocol come from mavenLocal: run `./gradlew publishToMavenLocal`
+  in `minecraft-carried` and `minecraft-ranged-weapons` first.
 - The gametest server runs Village Deed from the sibling repo's `build/libs/villagedeed-2.2.0.jar`,
   Backpacks+ from `../minecraft-backpacks-plus/build/libs/backpacksplus-0.7.0.jar`, Ranged Weapons
   Mod 2.12.0, Metals and Materials 1.0.3, Village Law 1.1.0, Vanilla Wheels 1.11.0 and Trailer

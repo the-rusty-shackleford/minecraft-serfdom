@@ -125,7 +125,8 @@ public final class Workers {
      * by the law).
      * effects: the villager is free again: its chain comes off (and is not given back), it steps out
      * of any vehicle, its bed and post are given up, it walks at a free villager's pace, the tool it
-     * keeps drops where it stands, what it wears does as {@link Parting#fate} says for {@code way}
+     * keeps drops where it stands (and anything it took to defend the base), what it wears does as
+     * {@link Parting#fate} says for {@code way}
      * (set free, it drops; escaping or freed by the law, it stays on), and it lives as a free
      * villager does, which walks it to the nearest village. What it carries stays with it. No case
      * is owed it any more. */
@@ -136,6 +137,8 @@ public final class Workers {
         if (villager.isLeashed()) villager.dropLeash(true, false);
         if (villager.isPassenger()) villager.stopRiding();
         if (!worker.tool().isEmpty()) villager.spawnAtLocation(worker.tool());
+        // What it took from its owner's chests in a raid (D-0007) drops with the tool.
+        com.chunkworks.serfdom.defence.Defenders.drop(villager);
         var hand = villager.getItemBySlot(EquipmentSlot.MAINHAND);
         if (!hand.isEmpty() && worker.post().isPresent()) {
             villager.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
@@ -345,6 +348,8 @@ public final class Workers {
         var worker = of(villager);
         var hand = villager.getItemBySlot(EquipmentSlot.MAINHAND);
         if (hand.isEmpty() || !worker.owned()) return;
+        // A defender's weapon (D-0007) is not a tool: it stays in hand, and goes back to its chest.
+        if (com.chunkworks.serfdom.defence.Defenders.arms(villager).holds()) return;
         villager.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         // A purchase only shown in its hand is in its basket (D-0006), not a tool.
         if (com.chunkworks.serfdom.market.Baskets.shown(hand)) return;

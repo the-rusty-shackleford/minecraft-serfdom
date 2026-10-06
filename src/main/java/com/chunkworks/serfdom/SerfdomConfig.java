@@ -79,6 +79,15 @@ public final class SerfdomConfig {
     public static final ModConfigSpec.IntValue WANTS_EACH = B
             .comment("The most of any one item a villager wants for its taste, at home.")
             .defineInRange("wants_each", 3, 0, 64);
+    public static final ModConfigSpec.BooleanValue DEFENCE = B
+            .comment("Owned villagers arm themselves from their chests in a raid, fight, and put it all back after (D-0007). Off: they hide as vanilla's do.")
+            .define("defence", true);
+    public static final ModConfigSpec.IntValue DEFENCE_REACH = B
+            .comment("Blocks from its post or bed past which a defender never chases a raider.")
+            .defineInRange("defence_reach", 48, 8, 96);
+    public static final ModConfigSpec.IntValue AMMO_CARRIED = B
+            .comment("The most arrows or rounds a defender carries out of its chests.")
+            .defineInRange("ammo_carried", 64, 1, 640);
     public static final ModConfigSpec.BooleanValue WORKERS = B
             .comment("The workers module: hiring, beds, posts and jobs. Off: owned villagers live as free ones and nobody can hire.")
             .define("workers", true);
