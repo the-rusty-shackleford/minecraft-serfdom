@@ -1,7 +1,16 @@
 # Serfdom
 
-**0.9.0 (shared farms and sowing, D-0008): built and gated on 2026-10-06. Not released; on Rusty's go,
-with or after the 0.8.1 startup-stall fix (see Next).** Gate: `devtools/verification/release-0.9.0.md`
+**0.9.1 (no structure search while sampling the price lists, D-0009): built and gated on 2026-10-06. Not
+released; Rusty holds the release for a pathfinding bug he will bring next, to ship together.** It is
+0.9.0 whole plus the startup-stall fix, in place of the "0.8.1" once planned. Gate:
+`devtools/verification/release-0.9.1.md` (319 JUnit, 114 GameTests, booth 125 checks with 59 photos, 4 of
+4 mutations; jar sha1 `eb6ec2a8`). The stall was one listing: Backport 1.0.9's explorer maps, which the
+sampling's skip of vanilla's treasure maps by name let through; each call searched the world for a
+structure and saved a new map. Measured with the box's 99 mods: 10347 ms before, 245 ms after, no map
+saved. The box holds nine such maps (ids 226 to 234, from the 1.73.0 start), left in place.
+
+**0.9.0 (shared farms and sowing, D-0008): built and gated on 2026-10-06. Not released; carried whole
+into 0.9.1.** Gate: `devtools/verification/release-0.9.0.md`
 (319 JUnit, 113 GameTests seven runs in a row, booth 125 checks with 59 photos, 25 of 25 mutations; jar
 sha1 `8500ca6b`). Rusty's calls: touching farming posts of one owner are one farm (over one big post);
 sowing copies what grows near "so long as their copying does not interfere with what you decided is to
@@ -83,8 +92,8 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | Public at github.com/the-rusty-shackleford/minecraft-serfdom, jars on its Releases |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md`; 0.9.0: `release-0.9.0.md` (all in `devtools/verification/`) |
-| Release | 0.8.0 in pack 1.73.0 (2026-10-06); 0.9.0 built, only on Rusty's go, `add-file --replaces mods/serfdom-0.8.0.jar` |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md`; 0.9.0: `release-0.9.0.md`; 0.9.1: `release-0.9.1.md` (all in `devtools/verification/`) |
+| Release | 0.8.0 in pack 1.73.0 (2026-10-06); 0.9.1 built, held by Rusty for the pathfinding fix, then `add-file --replaces mods/serfdom-0.8.0.jar` |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
 "Rusty Shackleford and nfx". Nests Carried. Optional: Village Deed 2.2+ (bought villages, home
@@ -158,7 +167,8 @@ Each phase is previewed to Rusty before it is built.
     the owner lock and the ledger payload; `Shoppers` the plan; `Counter` the sale),
     `behavior/ShopTime` (core, on free villagers' vanilla brains too) and `behavior/GoShopping`
     (the `serfdom:shop` activity), `mixin/MerchantOfferMixin`, `client/ForSaleScreen`,
-    `ForSaleRenderer`, `PurseLabel`.
+    `ForSaleRenderer`, `PurseLabel`. 0.9.1 (D-0009): `mixin/ServerLevelMixin` refuses map structure
+    searches while `Prices` samples the price lists (`Prices.refusesSearch`).
   - 4b: `market/Tastes` (taste, climate, kinds and origins by tag, the bonus, what it wants),
     `market/Peddlers` (free villagers selling, one buyer at a time); `Needs` reads each trade's
     `taste` and `sells`; `Shoppers.Plan` goes to a stall or a seller, or looks; `Counter.buyFrom`;
@@ -317,9 +327,9 @@ Each phase is previewed to Rusty before it is built.
   variables; with the desktop's `:1` in the shell it opened on Rusty's screen.
 - **A hopper pushes its slots in order:** a test that a stall refuses a hopper's dirt must wait
   until the hopper has tried it.
-- **Vanilla's trade lists can be read with a villager never added to the world,** but a treasure
-  map's listing searches the world for a structure: skip `VillagerTrades.TreasureMapForEmeralds`
-  (Villager API builds More Villagers' maps from the same class).
+- **Vanilla's trade lists can be read with a villager never added to the world,** but a map listing
+  searches the world for a structure and saves a new map. 4a skipped `VillagerTrades.TreasureMapForEmeralds`
+  by name, which Backport's own class got past (see 0.9.1); the search is now refused while sampling.
 
 **Met in 4b:**
 - **A block whose collision is no full block is open ground to vanilla's pathfinder,** and a mob plans
@@ -387,20 +397,29 @@ Each phase is previewed to Rusty before it is built.
   three runs were read as failing that never ran. Check the log's first line's time; the mutation
   script deletes the log first and refuses a run that did not compile.
 
+**Met in 0.9.1:**
+- **A map listing asked for an offer does real work in the world:** it searches for its structure,
+  marks the one it finds as referenced (a structure takes one, so no later map leads there), and saves
+  a new map. Sampling 1500 offers with a bare villager is safe only where nothing searches.
+- **The GameTest world makes no structures** (`WorldOptions(0, false, false)`): a structure search
+  there finds nothing whatever the code does. Count what was asked, and measure the rest on the box's
+  mods.
+- **A server on the desktop with the box's mods** answers what the GameTest server can't: copy
+  `/data/mods` through `package attach ... base64` (a raw `cat` through attach changes binary bytes;
+  check every sha1), install the NeoForge server with its installer, and give it another port, no RCON
+  and a new world. Recipe in `devtools/verification/release-0.9.1.md`.
+
 ## Next
 
-- **0.9.0's release, on Rusty's go** (shared farms, D-0008): tag `v0.9.0`, attach `build/wiki.zip`
-  (the page now has Shared farms and Sowing, photos `farm`, `farm-post`, `sowing-before`,
-  `sowing-after`), replace 0.8.0 in the pack. Judge the wiki page locally first (`snap.py`). Rusty
-  vets photos 56 to 59.
+- **A pathfinding bug Rusty has seen, next** (2026-10-06: he holds the release to batch its fix in).
+- **The release, after it and on Rusty's go** (D-0008 and D-0009): tag the version that carries both,
+  attach `build/wiki.zip` (the page has Shared farms and Sowing, photos `farm`, `farm-post`,
+  `sowing-before`, `sowing-after`), replace 0.8.0 in the pack. Judge the wiki page locally first
+  (`snap.py`). Rusty vets photos 56 to 59.
 - Unasked, for Rusty if he wants them: woodcutting posts linked into a shared forest (the same rule
   would serve); a farmer with no seed buying some at a stall (today it shows the empty crate).
-- **The startup stall** (seen on the box, 2026-10-06): `market/Prices` works out the base values on
-  the server thread at start, 2543 ms for the pack's 501 items, and the server fell 3698 ms behind
-  right after `Done`. A `/reload` marks the table stale and the next `Prices.value` rebuilds it inside
-  whatever tick asks (a trade, a shopper), so there the stall lands in play. Fixes to weigh: cache the table on disk keyed by
-  the data packs and mod list, or build the price lists a profession per tick. A 0.8.1 for it needs
-  Rusty's go.
+- **The startup stall: fixed in 0.9.1** (D-0009). After the release, the box's first start should log
+  `... map searches refused), worked out in` a few hundred ms, and no new `map_*.dat` (the last id is 234).
 - Watch the box's log for Serfdom in live play: no hire, capture, market day or raid has run there.
 - Rusty vets 0.8.0's photos 51 to 55 (and says whether a weapon across folded arms will do), 0.7.0's
   47 to 50 and 0.6.0's 37 to 46.

@@ -7,7 +7,7 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.9.0:
+This is 0.9.1:
 - phase 1: woodcutting and farming, cooking and the blacksmith;
 - phase 2a: the capture (D-0003);
 - phase 2b: what a worker wears (D-0004);
@@ -17,6 +17,8 @@ This is 0.9.0:
 - phase 5: raids and defending the base (D-0007);
 - shared farms and sowing (D-0008): farming posts that touch are one farm, its farmers working a
   plot each and filling in for one another, and bare farmland sown with what grows around it.
+- 0.9.1 (D-0009): working out the base values no longer searches the world for map structures,
+  which had held the server 2.5 seconds at every start and saved nine unused maps.
 
 The five phases are the whole of the plan; shared farms came after, from players asking for far
 larger farms.
@@ -666,8 +668,13 @@ The market's data (D-0006):
     the sale and writes `domain/Ledger`. What it carries home is saved (`serfdom:basket`), one piece
     shown in its hand marked so nothing takes it for a tool or drops it.
   - **Values** (`market/Prices`, `domain/Values`) are worked out once the server starts, from the
-    data and every profession's price list, tried with a villager never added to the world (a
-    treasure map's world search is never run).
+    data and every profession's price list, tried with a villager never added to the world. While
+    they are, a map structure search finds nothing (`mixin/ServerLevelMixin`, D-0009), so a map
+    listing (vanilla's cartographer, Backport's explorer maps, any mod's that searches through the
+    level) gives no offer, searches nothing and saves no map. The log line `Serfdom: base values for
+    N items (M from the price lists, K map searches refused), worked out in T ms` says how long it
+    took: about 250 ms with the box's 99 mods on a desktop (it was 10 seconds there before D-0009),
+    and a much larger T means some listing does slow work another way.
   - **4b:** `domain/Shopping.decide` says what a villager does in its social time (a need first,
     then a look at a stall it hasn't seen, saved with its purse as `seen`). `market/Tastes` reads a
     villager's taste (`domain/Taste`, drawn from its UUID by a hash written out in the domain, so it

@@ -9,6 +9,7 @@
     "FurnaceAccess",
     "MerchantOfferMixin",
     "MobAccessor",
+    "ServerLevelMixin",
     "SmithingAccess",
     "VillagerMakeLoveMixin",
     "VillagerMixin",

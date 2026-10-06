@@ -648,6 +648,29 @@ public final class MarketGameTests {
         h.succeed();
     }
 
+    /** Working out the base values searches for no structure and saves no map (D-0009): every map
+     * listing on the price lists (the cartographer's) is refused its search, once for each of the three
+     * seeds, no map id is taken meanwhile, and a search after the build is vanilla's again. The
+     * GameTest world makes no structures, so a search there finds none either way: what this counts is
+     * the refusals; the time and the maps are measured on the box's mods (`release-0.9.1.md`). */
+    @GameTest(template = "yard", timeoutTicks = 20, batch = "trade")
+    public void theBaseValuesSearchForNoStructure(GameTestHelper h) {
+        var level = h.getLevel();
+        long maps = net.minecraft.world.entity.npc.VillagerTrades.TRADES.values().stream()
+                .flatMap(byLevel -> byLevel.values().stream()).flatMap(java.util.Arrays::stream)
+                .filter(l -> l instanceof net.minecraft.world.entity.npc.VillagerTrades.TreasureMapForEmeralds).count();
+        h.assertTrue(maps > 0, "the cartographer sells maps");
+        int before = level.getFreeMapId().id();
+        Prices.build(level);
+        int after = level.getFreeMapId().id();
+        h.assertTrue(Prices.refusedSearches() == maps * 3, maps + " map listings, three seeds each, but " + Prices.refusedSearches() + " searches refused");
+        h.assertTrue(after == before + 1, "no map saved while sampling: ids " + before + " then " + after);
+        level.findNearestMapStructure(net.minecraft.tags.StructureTags.VILLAGE, h.absolutePos(BlockPos.ZERO), 1, false);
+        h.assertTrue(Prices.refusedSearches() == maps * 3, "a search after the build is not refused: " + Prices.refusedSearches());
+        h.assertTrue(Math.abs(Prices.value(level, new ItemStack(Items.BREAD)).orElseThrow() - 1 / 6.0) < 1e-9, "the values are worked out as before");
+        h.succeed();
+    }
+
     /** A worker's screen shows its purse. */
     @GameTest(template = "yard", timeoutTicks = 40, batch = "trade")
     public void theWorkerScreenShowsThePurse(GameTestHelper h) {

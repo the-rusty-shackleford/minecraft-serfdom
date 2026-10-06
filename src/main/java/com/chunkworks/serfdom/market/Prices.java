@@ -40,7 +40,8 @@ import org.slf4j.Logger;
  * <pre>{"values": {"minecraft:bone_meal": 0.1, "#minecraft:saplings": 0.2}}</pre>
  * then every profession's price list as the server has it (vanilla's and the pack's, after NeoForge's
  * trade event), each listing tried at each level with three seeds by a villager made for it and never
- * added to the world; a treasure map is never drawn, since that searches the world for a structure;
+ * added to the world, where a map listing finds no structure (D-0009): drawing a map searches the world
+ * for one and saves a new map, and a map's offer, emeralds and a compass, is never a simple one anyway;
  * then food at bread's rate. Worked out once the server has started and again after a reload, the
  * first time it is asked for. */
 public final class Prices extends SimpleJsonResourceReloadListener {
@@ -51,8 +52,24 @@ public final class Prices extends SimpleJsonResourceReloadListener {
     private static volatile List<Map.Entry<String, Double>> tags = List.of();
     private static volatile Map<Item, Double> table = Map.of();
     private static volatile boolean stale = true;
+    /** The thread asking the price lists for their offers, while it does; null otherwise. */
+    private static volatile Thread sampler;
+    /** The structure searches refused in the last build; written by the sampler only. */
+    private static int refused;
 
     public Prices() { super(GSON, "serfdom/values"); }
+
+    /** effects: true, and counted, when the caller is the price lists being sampled (D-0009), so that
+     * the structure search it asks for finds nothing; false for every other caller. Asked by
+     * {@code ServerLevelMixin} before every map's structure search. */
+    public static boolean refusesSearch() {
+        if (sampler != Thread.currentThread()) return false;
+        refused++;
+        return true;
+    }
+
+    /** effects: how many structure searches the last build refused. For the log and the GameTests. */
+    public static int refusedSearches() { return refused; }
 
     @Override protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager manager, ProfilerFiller profiler) {
         var it = new LinkedHashMap<String, Double>();
@@ -103,33 +120,39 @@ public final class Prices extends SimpleJsonResourceReloadListener {
         out.forEach((k, v) -> t.put(RecipeBook.item(k), v));
         table = Map.copyOf(t);
         stale = false;
-        LOG.info("Serfdom: base values for {} items ({} from the price lists), worked out in {} ms", table.size(), prices.size(), (System.nanoTime() - started) / 1_000_000);
+        LOG.info("Serfdom: base values for {} items ({} from the price lists, {} map searches refused), worked out in {} ms",
+                table.size(), prices.size(), refused, (System.nanoTime() - started) / 1_000_000);
     }
 
     /** effects: the prices every simple offer of every profession's price list shows, by item. */
     private static Map<String, List<Double>> sample(ServerLevel level) {
         var out = new HashMap<String, List<Double>>();
-        for (var entry : VillagerTrades.TRADES.entrySet()) {
-            var trader = new Villager(EntityType.VILLAGER, level);
-            for (var byLevel : entry.getValue().int2ObjectEntrySet()) {
-                trader.setVillagerData(trader.getVillagerData().setProfession(entry.getKey()).setLevel(Math.clamp(byLevel.getIntKey(), 1, 5)));
-                for (var listing : byLevel.getValue()) {
-                    if (listing instanceof VillagerTrades.TreasureMapForEmeralds) continue;
-                    for (int seed = 0; seed < SEEDS; seed++) {
-                        try {
-                            var offer = listing.getOffer(trader, RandomSource.create(seed));
-                            if (offer == null) continue;
-                            var b = offer.getCostB();
-                            Values.seen(RecipeBook.key(offer.getCostA().getItem()), offer.getCostA().getCount(), b.isEmpty() ? "" : RecipeBook.key(b.getItem()), b.getCount(),
-                                    RecipeBook.key(offer.getResult().getItem()), offer.getResult().getCount())
-                                    .ifPresent(s -> out.computeIfAbsent(s.item(), k -> new ArrayList<>()).add(s.each()));
-                        } catch (RuntimeException e) {
-                            // A listing that needs more than a bare villager gives no price.
+        refused = 0;
+        sampler = Thread.currentThread();
+        try {
+            for (var entry : VillagerTrades.TRADES.entrySet()) {
+                var trader = new Villager(EntityType.VILLAGER, level);
+                for (var byLevel : entry.getValue().int2ObjectEntrySet()) {
+                    trader.setVillagerData(trader.getVillagerData().setProfession(entry.getKey()).setLevel(Math.clamp(byLevel.getIntKey(), 1, 5)));
+                    for (var listing : byLevel.getValue()) {
+                        for (int seed = 0; seed < SEEDS; seed++) {
+                            try {
+                                var offer = listing.getOffer(trader, RandomSource.create(seed));
+                                if (offer == null) continue;
+                                var b = offer.getCostB();
+                                Values.seen(RecipeBook.key(offer.getCostA().getItem()), offer.getCostA().getCount(), b.isEmpty() ? "" : RecipeBook.key(b.getItem()), b.getCount(),
+                                        RecipeBook.key(offer.getResult().getItem()), offer.getResult().getCount())
+                                        .ifPresent(s -> out.computeIfAbsent(s.item(), k -> new ArrayList<>()).add(s.each()));
+                            } catch (RuntimeException e) {
+                                // A listing that needs more than a bare villager gives no price.
+                            }
                         }
                     }
                 }
+                trader.discard();
             }
-            trader.discard();
+        } finally {
+            sampler = null;
         }
         return out;
     }
