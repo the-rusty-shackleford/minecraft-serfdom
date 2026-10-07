@@ -99,6 +99,7 @@ final class CropTask implements Job.Task {
                 level.destroyBlock(pos, false, worker);
                 Storage.add(worker.getInventory(), drops);
             }
+            worker.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
             done.accept(pos);
             next++;
             left = -1;
@@ -129,6 +130,7 @@ final class CropTask implements Job.Task {
             if (!carried.getItem(i).is(seed)) continue;
             carried.getItem(i).shrink(1);
             level.setBlockAndUpdate(pos, state);
+            worker.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
             var sound = state.getSoundType(level, pos, worker);
             level.playSound(null, pos, sound.getPlaceSound(), SoundSource.BLOCKS, (sound.getVolume() + 1.0F) / 2.0F, sound.getPitch() * 0.8F);
             level.gameEvent(GameEvent.BLOCK_PLACE, pos, GameEvent.Context.of(worker, state));

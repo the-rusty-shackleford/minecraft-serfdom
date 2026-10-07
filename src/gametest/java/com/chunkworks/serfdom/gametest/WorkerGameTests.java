@@ -248,6 +248,7 @@ public final class WorkerGameTests {
         var post = Yard.post(h, 18, 16, owner, "woodcutting", 8);
         var worker = Yard.worker(h, 18, 14, VillagerProfession.FLETCHER, owner, bed, post);
         worker.getInventory().addItem(new ItemStack(Items.OAK_SAPLING));
+        var swings = swings(h, worker);
         h.startSequence().thenExecute(() -> {
             // A player builds a column of logs by hand and crowns it with natural leaves.
             owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.OAK_LOG, 4));
@@ -274,6 +275,9 @@ public final class WorkerGameTests {
             for (var p : built) h.assertTrue(Yard.is(h, p, Blocks.OAK_LOG), "the player's column stands: " + p);
             var axe = worker.getItemBySlot(EquipmentSlot.MAINHAND);
             h.assertTrue(axe.is(Items.IRON_AXE) && axe.getDamageValue() >= oakLogs.size(), "the axe wore a use a log at least: " + axe.getDamageValue() + " for " + oakLogs.size());
+            // A log comes down in fewer ticks than a blow lasts, and vanilla starts no new swing in the first
+            // half of one: a blow a log at the least.
+            h.assertTrue(swings[0] >= oakLogs.size(), "it swung its axe as it chopped (D-0011), a blow a log at the least: " + swings[0] + " for " + oakLogs.size());
             int naturalLeft = 0;
             for (var p : BlockPos.betweenClosed(root.offset(-3, 0, -3), root.offset(3, 9, 3))) {
                 var s = h.getLevel().getBlockState(p);
@@ -309,6 +313,7 @@ public final class WorkerGameTests {
         var bed = Yard.bed(h, 20, 12);
         var post = Yard.post(h, 12, 12, owner, "farming", 6);
         var worker = Yard.worker(h, 12, 16, VillagerProfession.FARMER, owner, bed, post);
+        var swings = swings(h, worker);
         h.startSequence().thenWaitUntil(() -> {
             for (var r : ripe) {
                 var state = level.getBlockState(Yard.at(h, r[0], 1, r[1]));
@@ -320,6 +325,7 @@ public final class WorkerGameTests {
             h.assertTrue(level.getBlockState(Yard.at(h, 10, 1, 8)).getBlock() instanceof StemBlock, "the stem stays");
             h.assertTrue(Yard.is(h, Yard.at(h, 12, 0, 9), Blocks.GRASS_BLOCK), "no grass tilled");
             h.assertTrue(worker.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.IRON_HOE), "working with the stored hoe");
+            h.assertTrue(swings[0] >= ripe.length + 1, "it swung its hoe at each crop and the pumpkin (D-0011): " + swings[0]);
             level.setDayTime(WorkDay.WORK_END - 500);
         }).thenWaitUntil(() -> {
             h.assertTrue(worker.getInventory().isEmpty(), "everything is put away: " + worker.getInventory());
@@ -490,6 +496,29 @@ public final class WorkerGameTests {
     /** effects: a crop's age, by whichever age property its block has. */
     private static int age(net.minecraft.world.level.block.state.BlockState state) {
         return state.hasProperty(CropBlock.AGE) ? state.getValue(CropBlock.AGE) : state.getValue(net.minecraft.world.level.block.BeetrootBlock.AGE);
+    }
+
+    /** effects: a count, kept every tick, of the swings {@code v} starts: a swing restarting shows as its
+     * time falling back. */
+    static int[] swings(GameTestHelper h, Villager v) {
+        int[] count = {0}, last = {0};
+        h.onEachTick(() -> {
+            if (v.swinging && v.swingTime < last[0]) count[0]++;
+            last[0] = v.swinging ? v.swingTime : 0;
+        });
+        return count;
+    }
+
+    /** A villager's swing plays and ends (D-0011): vanilla advances a swing only for monsters and
+     * players, so a villager's stood at its start for ever. A free villager here, swung once: three
+     * ticks on it is part way through the blow, and ten ticks on it is over. */
+    @GameTest(template = "yard", timeoutTicks = 60) public void aVillagersSwingPlaysAndEnds(GameTestHelper h) {
+        Yard.floor(h);
+        var v = Yard.villager(h, 10, 10, VillagerProfession.MASON, 2);
+        h.startSequence().thenIdle(SETTLE).thenExecute(() -> v.swing(net.minecraft.world.InteractionHand.MAIN_HAND))
+                .thenIdle(3).thenExecute(() -> h.assertTrue(v.swinging && v.getAttackAnim(0F) > 0 && v.getAttackAnim(0F) < 1, "part way through the blow: " + v.getAttackAnim(0F)))
+                .thenIdle(10).thenExecute(() -> h.assertTrue(!v.swinging && v.getAttackAnim(0F) == 0, "the swing is over: " + v.swinging + " " + v.getAttackAnim(0F)))
+                .thenSucceed();
     }
 
     /** effects: every block from (x0, y0, z0) to (x1, y1, z1), both included, set to {@code block}. */

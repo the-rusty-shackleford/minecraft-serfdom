@@ -11,6 +11,9 @@ import net.minecraft.world.entity.npc.Villager;
 /** What code knows how to do for one target kind of {@link com.chunkworks.serfdom.domain.JobScript}:
  * find a target in a post's area and work it. */
 public interface Job {
+    /** A swing's length in ticks, a player's: a worker at a long job swings once each (D-0011). */
+    int SWING = 6;
+
     /** effects: the next target to work in {@code post}'s area, nearest the worker first, leaving
      * out those {@code skip} rejects (targets it could not reach lately); no task when there is
      * none, with what the worker lacks when that is why. */

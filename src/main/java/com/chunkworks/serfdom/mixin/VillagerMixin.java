@@ -58,6 +58,14 @@ abstract class VillagerMixin {
         if (!self.level().isClientSide() && com.chunkworks.serfdom.Workers.of(self).captive()) cir.setReturnValue(false);
     }
 
+    /** A villager's swing plays (D-0011): vanilla advances the swing only for monsters and players, so a
+     * villager's {@code swing} set it going and it never moved, on either side. Its arms, out of the fold
+     * with a tool, take the blow from it. */
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void serfdom$swingTime(CallbackInfo ci) {
+        ((LivingEntityInvoker) this).serfdom$updateSwingTime();
+    }
+
     /** A child of two villagers with the same owner is that owner's, hired (D-0003); any other is
      * free. Its bed is given to it as it is born ({@code VillagerMakeLoveMixin}). */
     @Inject(method = "getBreedOffspring(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/AgeableMob;)Lnet/minecraft/world/entity/npc/Villager;", at = @At("RETURN"))

@@ -7,6 +7,7 @@
     "CatSpawnerMixin",
     "EntityMixin",
     "FurnaceAccess",
+    "LivingEntityInvoker",
     "MerchantOfferMixin",
     "MobAccessor",
     "ServerLevelMixin",
@@ -16,6 +17,7 @@
     "VillagerWearMixin"
   ],
   "client": [
+    "CrossedArmsItemLayerMixin",
     "EntityRendererMixin",
     "VillagerModelMixin"
   ],

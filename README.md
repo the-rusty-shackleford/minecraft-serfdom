@@ -7,7 +7,7 @@ in your chests.
 
 By Rusty Shackleford and nfx, AGPL-3.0-or-later.
 
-This is 0.9.2:
+This is 0.9.3:
 - phase 1: woodcutting and farming, cooking and the blacksmith;
 - phase 2a: the capture (D-0003);
 - phase 2b: what a worker wears (D-0004);
@@ -21,6 +21,8 @@ This is 0.9.2:
   which had held the server 2.5 seconds at every start and saved nine unused maps.
 - 0.9.2 (D-0010): villagers swim through water again; since 0.1.0 every villager, free or hired,
   planned its paths along the bottom of water, and one in water two deep never climbed out.
+- 0.9.3 (D-0011): a villager holding a tool or a weapon grips it, its arms out of the fold, and
+  swings it as it works or strikes; a defender aims its bow, crossbow or gun.
 
 The five phases are the whole of the plan; shared farms came after, from players asking for far
 larger farms.
@@ -159,6 +161,13 @@ slots. Click a piece on, or shift-click it from your inventory into its slot.
   free or is led away while the screen is open, nothing more can be taken through it.
 - **How it looks.** Anything on its legs takes the villager's robe off, so leggings and trousers
   show. A chestplate alone goes over the robe. Anything on its head hides its trade's hat.
+- **Tools in hand** (D-0011). A villager holding a tool or a weapon (an axe, a hoe, a pickaxe, a
+  shovel, a sword, a knife, a trident, a mace, a bow, a crossbow or a gun) has its arms out of the
+  fold, as an illager's are, and grips it in its right hand as you would. Woodcutters swing as they
+  chop, farmers at each crop and each seed, a cook its knife at the cutting board, defenders as
+  they strike; a defender fighting draws its bow to the eye or holds its crossbow or gun to the
+  shoulder. Anything else it holds (bread, an emerald) sits on its folded arms as before. A captive
+  in chains wears an iron band on each wrist while its arms are out.
 - **Any villager.** Armour shows on every villager, so a piece a dispenser put on a free villager
   shows too.
 
@@ -713,6 +722,23 @@ The market's data (D-0006):
   - `client/Dress`, with a mixin after the profession layer, hides the robe under leggings and the
     hat under anything on the head.
   - An elytra hangs 1.5 pixels farther back.
+- **Arms out of the fold** (D-0011, `client/ArmsLayer`, `domain/Grip`):
+  - What grips: `client/Grips` (tiered items, tridents, maces, and the defence's weapon kinds).
+    `Dress` hides the folded arms for such a villager and `CrossedArmsItemLayerMixin` stops vanilla's
+    item on them.
+  - Two arms pivoting at a player's shoulders, each the folded arm's own upper sleeve (UV 44, 22)
+    over a narrower hand; the sleeves drawn with the skin, the biome's clothes and the profession's,
+    the hands with the bare skin. They hang from the body part as it stands each frame, so a
+    resource pack's body animation (Fresh Animations) carries them.
+  - Poses by HumanoidModel's numbers: walking swing, the tool a tenth of a turn forward, a blow,
+    a bow drawn and a crossbow held while `isAggressive` (set by `Defend` while it fights a live
+    target, cleared when it stops), and the idle bob. The item sits in the hand as vanilla's
+    `ItemInHandLayer` places it. The armour layer's stand-in arms take the same poses.
+  - Vanilla advances a swing only for monsters and players; `VillagerMixin` advances a villager's
+    every tick, so every `swing` in the code plays. Woodcutting swings every `Job.SWING` ticks of a
+    chop and as a log falls or a sapling goes in; farming at each harvest and each sowing.
+  - In chains with its arms out, a band of the anvil's dark iron goes round each wrist
+    (`CuffsLayer`).
 
 Village Deed, Farmer's Delight, Ranged Weapons Mod, Thief, Village Law 1.1+ and Vanilla Wheels
 1.11+ are optional: without them there are no bought villages (and no stalls barred from one); no tomatoes, rice, pot, stove or

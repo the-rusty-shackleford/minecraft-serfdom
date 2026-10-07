@@ -14,7 +14,9 @@ import net.neoforged.neoforge.client.event.RenderLivingEvent;
  * show;</li>
  * <li>anything on its head hides its hat (a farmer's brim, a type's hood), which would poke through
  * a helmet. The profession layer sets the hat's visibility itself every draw, so the model's mixin
- * asks {@link #headCovered} after it.</li>
+ * asks {@link #headCovered} after it;</li>
+ * <li>a tool or a weapon in its hand takes its arms out of the fold (D-0011): the folded arms are
+ * hidden, and {@link ArmsLayer} draws the two that grip it.</li>
  * </ul>
  * Every villager shares one model, so each draw sets it before and puts it back after. */
 public final class Dress {
@@ -29,11 +31,13 @@ public final class Dress {
         jacket(model).visible = Fit.robeShown(!villager.getItemBySlot(EquipmentSlot.LEGS).isEmpty());
         headCovered = !villager.getItemBySlot(EquipmentSlot.HEAD).isEmpty();
         if (headCovered) model.getHead().getChild("hat").visible = false;
+        model.root().getChild("arms").visible = !Grips.out(villager);
     }
 
     static void after(RenderLivingEvent.Post<?, ?> event) {
         if (!(event.getEntity() instanceof Villager) || !(event.getRenderer().getModel() instanceof VillagerModel<?> model)) return;
         jacket(model).visible = true;
+        model.root().getChild("arms").visible = true;
         headCovered = false;
     }
 

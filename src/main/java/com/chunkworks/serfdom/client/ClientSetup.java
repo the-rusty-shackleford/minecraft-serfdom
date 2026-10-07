@@ -17,8 +17,9 @@ import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 /** The client's registrations: the two screens take what the server sends, the Worker Screen as
- * its menu's screen; need icons and post outlines draw with the world; a villager wears its armour,
- * an elytra and its cuffs, its robe and hat dressed for what it wears; and (D-0006) the For Sale
+ * its menu's screen; need icons and post outlines draw with the world; a villager grips a tool or a
+ * weapon with its arms out (D-0011), wears its armour, an elytra and its cuffs, its robe and hat
+ * dressed for what it wears; and (D-0006) the For Sale
  * block's screen, ledger and item above it, and the purse over the trade screen. */
 @EventBusSubscriber(modid = Serfdom.ID, value = Dist.CLIENT)
 public final class ClientSetup {
@@ -41,12 +42,17 @@ public final class ClientSetup {
     @SubscribeEvent public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(Serfdom.FOR_SALE_ENTITY.get(), ForSaleRenderer::new);
     }
+    @SubscribeEvent public static void layerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(ArmsLayer.LAYER, ArmsLayer::create);
+        event.registerLayerDefinition(CuffsLayer.MANACLES, CuffsLayer::create);
+    }
     @SubscribeEvent public static void layers(EntityRenderersEvent.AddLayers event) {
         var renderer = event.getRenderer(EntityType.VILLAGER);
         if (renderer instanceof VillagerRenderer villagers) {
+            villagers.addLayer(new ArmsLayer(villagers, event.getContext()));
             villagers.addLayer(new VillagerArmourLayer(villagers, event.getContext()));
             villagers.addLayer(new VillagerElytraLayer(villagers, event.getEntityModels()));
-            villagers.addLayer(new CuffsLayer(villagers));
+            villagers.addLayer(new CuffsLayer(villagers, event.getContext()));
         }
     }
 }

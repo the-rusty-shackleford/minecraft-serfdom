@@ -21,7 +21,8 @@ import net.minecraft.world.entity.npc.Villager;
  * too. Drawn by vanilla's own armour layer, so dyes, trims, the enchantment glint and a mod's own
  * armour models and textures all work, on a stand-in player model posed as {@link Fit} says from the
  * villager's model as it stands this frame. The stand-in is one shared model, posed per draw; a
- * villager wearing nothing costs four empty-slot reads. */
+ * villager wearing nothing costs four empty-slot reads. With its arms out of the fold, gripping a
+ * tool or a weapon (D-0011), the sleeves take those arms' poses, which are a player's arms'. */
 public final class VillagerArmourLayer extends RenderLayer<Villager, VillagerModel<Villager>> {
     private final HumanoidModel<Villager> standIn;
     private final HumanoidArmorLayer<Villager, HumanoidModel<Villager>, HumanoidModel<Villager>> armour;
@@ -47,8 +48,9 @@ public final class VillagerArmourLayer extends RenderLayer<Villager, VillagerMod
         set(standIn.head, turned);
         set(standIn.hat, turned);
         set(standIn.body, Fit.body());
-        set(standIn.rightArm, Fit.arm(true));
-        set(standIn.leftArm, Fit.arm(false));
+        var out = ArmsLayer.arms(villager, limbSwing, limbSwingAmount, partialTick, ageInTicks, netHeadYaw, headPitch);
+        set(standIn.rightArm, out.map(com.chunkworks.serfdom.domain.Grip.Arms::right).orElseGet(() -> Fit.arm(true)));
+        set(standIn.leftArm, out.map(com.chunkworks.serfdom.domain.Grip.Arms::left).orElseGet(() -> Fit.arm(false)));
         set(standIn.rightLeg, Fit.leg(true, model.root().getChild("right_leg").xRot));
         set(standIn.leftLeg, Fit.leg(false, model.root().getChild("left_leg").xRot));
         // The renderer has already scaled a child down; the armour models must not do it again.

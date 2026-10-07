@@ -1,7 +1,16 @@
 # Serfdom
 
+**0.9.3 (a villager grips its tool, arms out of the fold, D-0011): built and gated on 2026-10-06 (329
+JUnit, 120 GameTests, booth 135 checks with 67 photos, 5 of 5 mutations; jar sha1 `f086a349`). Not
+released; Rusty holds the release until his batch is done.** Rusty: "they look weird holding tools,
+as if they're holding the sprite and not the tool itself" (vanilla draws a villager's item as a
+dropped one on the folded arms); of two options he picked B, the arms out as an illager's. Found on
+the way: vanilla never plays a villager's swing (only monsters' and players'), so every swing Serfdom
+sent since 1b was invisible. Judged in the booth in vanilla's look and under the pack's Fresh
+Animations (`-PboothLook=fresh`, new). Record: `devtools/verification/release-0.9.3.md`.
+
 **0.9.2 (every villager's navigation floats, D-0010): built and gated on 2026-10-06. Not released;
-Rusty holds the release until his batch is done (the held-tool look is next, see Next).** Rusty saw a
+carried whole into 0.9.3.** Rusty saw a
 farmer stuck in the farm's water and "pathfinding struggles in water in general": the navigation
 Serfdom gives every villager dropped vanilla's `setCanFloat(true)`, so every villager, free or owned,
 planned along the bottom of water. Reproduced first (a worker never left a channel two deep), fixed in
@@ -100,8 +109,8 @@ repos and unreleased, to ship with it.
 | What | Where it stands |
 |---|---|
 | Repo | Public at github.com/the-rusty-shackleford/minecraft-serfdom, jars on its Releases |
-| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md`; 0.9.0: `release-0.9.0.md`; 0.9.1: `release-0.9.1.md`; 0.9.2: `release-0.9.2.md` (all in `devtools/verification/`) |
-| Release | 0.8.0 in pack 1.73.0 (2026-10-06); 0.9.2 built, held by Rusty until his batch is done, then `add-file --replaces mods/serfdom-0.8.0.jar` |
+| Gate | 1a: `release-0.1.0.md`; 0.2.0: `release-0.2.0.md`; 0.3.0: `release-0.3.0.md`; 0.4.0: `release-0.4.0.md`; 0.5.0: `release-0.5.0.md`; 0.6.0: `release-0.6.0.md`; 0.7.0: `release-0.7.0.md`; 0.8.0: `release-0.8.0.md`; 0.9.0: `release-0.9.0.md`; 0.9.1: `release-0.9.1.md`; 0.9.2: `release-0.9.2.md`; 0.9.3: `release-0.9.3.md` (all in `devtools/verification/`) |
+| Release | 0.8.0 in pack 1.73.0 (2026-10-06); 0.9.3 built, held by Rusty until his batch is done, then `add-file --replaces mods/serfdom-0.8.0.jar` |
 
 Minecraft 1.21.1, NeoForge 21.1.248, Java 21. `com.chunkworks.serfdom`, AGPL-3.0-or-later, headers
 "Rusty Shackleford and nfx". Nests Carried. Optional: Village Deed 2.2+ (bought villages, home
@@ -425,12 +434,38 @@ Each phase is previewed to Rusty before it is built.
 - **Water one deep traps nobody;** two deep with banks two high does, when the path is planned along the
   bottom. A water test needs the deep case.
 
+**Met in 0.9.3:**
+- **Vanilla advances a swing only for monsters and players** (`Monster.aiStep`, `Player.aiStep`): a
+  villager's `swing` sets it going and it never moves, on either side, so no swing of a villager has
+  ever shown. `VillagerMixin` advances it each tick.
+- **A chop is shorter than a blow:** an iron axe fells an oak log in fewer ticks than a swing's six, and
+  vanilla starts no new swing in the first half of one, so a woodcutter swings about once a log.
+- **A defence that ends by itself clears what its tick sets;** only one stopped from outside (a capture
+  rebuilds the brain, which stops every running behaviour) reaches `stop` with no tick between. A test
+  of `stop` needs that case: the swordsman's test let the mutation past.
+- **The booth's arms scene, run alone, passed and failed in the full run:** the full booth leaves the
+  camera over the farm, the arms lot's chunks unloaded, and `ServerLevel.getEntity(id)` of a villager
+  just added there was null. Move the camera first, then spawn; keep the entities, not their ids.
+- **Fresh Animations replaces the villager model under Entity Model Features** (the pack's client): it
+  keeps vanilla's part names and texture layout, animates `body` and `arms` with the body, and hides
+  vanilla's `jacket` for its own `coat`. A layer that hangs from `body.translateAndRotate` follows it.
+- **A rendering client of Rusty's counts:** check `pgrep -a java` for Prism's runtime as well as
+  `pgrep -a Xephyr` before every booth run, not once a session; five booth runs went beside his game
+  before it was seen. Another session's client counts too (a Backpacks+ network driver shared the
+  desktop during the gate; the two sessions took turns by message).
+- **The GameTests take sibling mods' jars by file name**, and Gradle drops a missing file from a
+  classpath silently: a clean build of Backpacks+ 0.7.1 removed `backpacksplus-0.7.0.jar` mid-pass,
+  and only the hiring test's check of the bag said so. When a sibling's version moves, move its pin.
+- **A booth photograph can be wrong while every check passes:** in the gate's run, photos 23 and 39
+  to 41 were grass seen straight down, the camera turned between two of the scene's teleports and put
+  back by the next; a rerun was right. `photo` now logs the camera's place and turn on both sides, so
+  a wrong one can be told from a wrong moment. Look at the photographs, not only the PASS lines.
+
 ## Next
 
-- **How a worker holds its tool** (Rusty, 2026-10-06: "they look weird holding tools, as if they're
-  holding the sprite and not the tool itself"): vanilla draws a villager's held item on its folded
-  arms as an item on the ground is drawn. A preview of the options first; part of the same batch.
-- **The release, after it and on Rusty's go** (D-0008, D-0009, D-0010): tag the version that carries them,
+- **Rusty vets photos 60 to 67** in both looks (`run/booth/screenshots/` and
+  `run/booth/screenshots-fresh/`): the grip, the aim, the swing, the manacles.
+- **The release, on Rusty's go** (D-0008 to D-0011): tag the version that carries them,
   attach `build/wiki.zip` (the page has Shared farms and Sowing, photos `farm`, `farm-post`,
   `sowing-before`, `sowing-after`), replace 0.8.0 in the pack. Judge the wiki page locally first
   (`snap.py`). Rusty vets photos 56 to 59.

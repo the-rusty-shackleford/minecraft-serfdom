@@ -14,3 +14,4 @@ Rationales are append-only. Supersede with a new decision.
 | [D-0008](D-0008.md) | Accepted | Shared farms: touching farming posts are one farm, a farmer holds a plot at a time (its own area first) and the others fill in; sowing copies what grows near without overriding the player's crops; woodcutters hold their trees |
 | [D-0009](D-0009.md) | Accepted | No structure search while the base values sample the price lists: a map listing (Backport's explorer maps) held the server 2.5 s at every start and saved nine maps |
 | [D-0010](D-0010.md) | Accepted | Every villager's navigation floats, as vanilla's does: Serfdom's replacement had dropped it, and villagers pathed along the bottom of water |
+| [D-0011](D-0011.md) | Accepted | A villager grips a tool or a weapon with its arms out of the fold, as an illager's, and swings it (vanilla never played a villager's swing); a defender aims; manacles on the wrists |

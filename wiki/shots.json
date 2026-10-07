@@ -15,7 +15,7 @@
     {"from": "run/booth/screenshots/serfdom-35-cooking.png", "to": "img/cooking.webp"},
     {"from": "run/booth/screenshots/serfdom-37-stall-front.png", "to": "img/stall.webp"},
     {"from": "run/booth/screenshots/serfdom-43-stall-screen.png", "to": "img/stall-screen.webp", "crop": [464, 140, 816, 392], "screen": true},
-    {"from": "run/booth/screenshots/serfdom-44-ledger.png", "to": "img/ledger.webp", "crop": [280, 140, 1000, 460], "screen": true},
+    {"from": "run/booth/screenshots/serfdom-44-ledger.png", "to": "img/ledger.webp", "crop": [280, 140, 1000, 580], "screen": true},
     {"from": "run/booth/screenshots/serfdom-39-bargain.png", "to": "img/market.webp"},
     {"from": "run/booth/screenshots/serfdom-51-armed-at-the-chest.png", "to": "img/armed.webp"},
     {"from": "run/booth/screenshots/serfdom-52-swordsman.png", "to": "img/swordsman.webp"},
@@ -23,6 +23,7 @@
     {"from": "run/booth/screenshots/serfdom-56-farm-shared.png", "to": "img/farm.webp", "crop": [90, 80, 1190, 600]},
     {"from": "run/booth/screenshots/serfdom-57-farm-post-screen.png", "to": "img/farm-post.webp", "crop": [404, 224, 876, 496], "screen": true},
     {"from": "run/booth/screenshots/serfdom-58-sowing-before.png", "to": "img/sowing-before.webp", "crop": [240, 0, 1040, 720]},
-    {"from": "run/booth/screenshots/serfdom-59-sowing-after.png", "to": "img/sowing-after.webp", "crop": [240, 0, 1040, 720]}
+    {"from": "run/booth/screenshots/serfdom-59-sowing-after.png", "to": "img/sowing-after.webp", "crop": [240, 0, 1040, 720]},
+    {"from": "run/booth/screenshots/serfdom-61-arms-close.png", "to": "img/tools-in-hand.webp"}
   ]
 }

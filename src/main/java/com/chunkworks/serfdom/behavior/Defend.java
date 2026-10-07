@@ -93,6 +93,9 @@ public final class Defend extends Behavior<Villager> {
             nextThink = now + THINK;
             think(level, v, now);
         }
+        // Fighting with a live target is the game's "aggressive", which every client sees: a bow is
+        // drawn to the eye and a crossbow held to the shoulder while it is (D-0011).
+        v.setAggressive(step == Defence.Step.FIGHT && target.filter(LivingEntity::isAlive).isPresent());
         if (step == null) return;
         switch (step) {
             case ARM -> trip(level, v, now, true);
@@ -104,6 +107,7 @@ public final class Defend extends Behavior<Villager> {
     }
 
     @Override protected void stop(ServerLevel level, Villager v, long now) {
+        v.setAggressive(false);
         v.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         var brain = v.getBrain();
         if (!brain.isActive(Serfdom.DEFEND.get())) return;

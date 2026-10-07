@@ -34,6 +34,12 @@ def luckysWardrobe = 'maven.modrinth:luckyowls-wardrobe:nkAh4uc7'
 // booth's alone, from its own mods folder: on the GameTest server it sends its payloads to the mock
 // players, which have no channel for them.
 def curios = 'maven.modrinth:curios:yohfFbgD'
+// `-PboothLook=fresh`: the booth sees villagers as the pack's players do (D-0011): Entity Model Features
+// 3.2.4 and Entity Texture Features 7.1 (the pack's jars) in its mods folder, and the pack's Fresh
+// Animations 1.10.4 on. Without it the booth is vanilla's look, which its checks were written for.
+def freshLook = project.findProperty('boothLook') == 'fresh'
+def freshPacks = [['FreshAnimations_v1.10.4.zip', 'https://cdn.modrinth.com/data/50dA9Sha/versions/xN57JJts/FreshAnimations_v1.10.4.zip',
+                   '73db740a6868e043c5e615c036fca2c912615b6e']]
 sourceSets { domain; gametest }
 def verificationDirectories = [file('run/config'), file('run/booth/config')]
 def boothDirectory = file('run/booth')
@@ -69,7 +75,21 @@ var boothWorld = tasks.register('prepareBoothWorld', Sync) {
     doLast {
         def directory = boothDirectory
         directory.mkdirs()
-        new File(directory, 'options.txt').text = 'onboardAccessibility:false\nnarrator:0\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:4\nsimulationDistance:5\nmaxFps:60\nguiScale:2\ntutorialStep:none\n'
+        new File(directory, 'options.txt').text = 'onboardAccessibility:false\nnarrator:0\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:4\nsimulationDistance:5\nmaxFps:60\nguiScale:2\ntutorialStep:none\n' +
+                (freshLook ? 'resourcePacks:["vanilla",' + freshPacks.collect { '"file/' + it[0] + '"' }.join(',') + ']\n' : '')
+    }
+}
+def boothPackDirectory = file('run/booth/resourcepacks')
+var boothPacks = tasks.register('prepareBoothPacks') {
+    onlyIf { freshLook }
+    doLast {
+        def dir = boothPackDirectory
+        dir.mkdirs()
+        freshPacks.each { name, url, sha1 ->
+            def pack = new File(dir, name)
+            if (!pack.exists() || pack.bytes.digest('SHA-1') != sha1) new URL(url).withInputStream { input -> pack.withOutputStream { it << input } }
+            if (pack.bytes.digest('SHA-1') != sha1) throw new GradleException(name + ': sha1 ' + pack.bytes.digest('SHA-1') + ', not ' + sha1)
+        }
     }
 }
 neoForge {
@@ -92,12 +112,14 @@ neoForge {
             sourceSet = sourceSets.gametest
             gameDirectory = file('run/booth')
             systemProperty 'serfdom.booth', 'true'
-            // `-PboothScene=farm` runs the farm scene alone (D-0008), `-PboothTrace` logs every worker's plan.
+            // `-PboothScene=farm` runs the farm scene alone (D-0008), `-PboothScene=arms` the arms (D-0011),
+            // `-PboothTrace` logs every worker's plan, `-PboothLook=fresh` sees villagers as the pack does.
             systemProperty 'serfdom.booth.scene', String.valueOf(project.findProperty('boothScene') ?: '')
             systemProperty 'serfdom.trace', String.valueOf(project.hasProperty('boothTrace'))
             programArguments.addAll('--quickPlaySingleplayer', 'booth', '--width', '1280', '--height', '720')
             taskBefore boothWorld
             taskBefore boothModFolder
+            taskBefore boothPacks
             taskBefore verification
         }
         configureEach { logLevel = org.slf4j.event.Level.INFO }
@@ -156,7 +178,7 @@ dependencies {
     gametestCompileOnly 'com.nfx.rangedweapons:rangedweapons:1.7.0'
     gametestRuntimeOnly farmersDelight
     // Backpacks+ on the gametest server only, so a fee is proven paid out of a real bag; never bundled.
-    gametestRuntimeOnly files('../minecraft-backpacks-plus/build/libs/backpacksplus-0.7.0.jar')
+    gametestRuntimeOnly files('../minecraft-backpacks-plus/build/libs/backpacksplus-0.7.1.jar')
     // Ranged Weapons Mod 2.12.0 and Metals and Materials 1.0.3 (its steel) on the gametest server
     // only, so a blacksmith is proven to make a rifle at the weapons workbench (D-0002); never bundled.
     gametestRuntimeOnly files('../minecraft-ranged-weapons-mod/build/libs/rangedweaponsmod-2.12.0.jar')
@@ -165,6 +187,10 @@ dependencies {
     // in a worker's slots, never wear, and fit as armour does (D-0004); never bundled.
     gametestRuntimeOnly luckysWardrobe
     boothMods curios
+    if (freshLook) {
+        boothMods 'maven.modrinth:4I1XuqiY:PAYgk63v'
+        boothMods 'maven.modrinth:BVzZfTc1:YEMROAHv'
+    }
 }
 tasks.named('test', Test) { useJUnitPlatform() }
 jar { from sourceSets.domain.output }

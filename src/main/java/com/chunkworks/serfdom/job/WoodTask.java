@@ -56,12 +56,15 @@ final class WoodTask implements Job.Task {
             }
             if (--left > 0) {
                 level.destroyBlockProgress(worker.getId(), pos, Math.min(9, 10 * (total - left) / total));
+                // A blow every swing's length, as a player holding the button swings (D-0011).
+                if ((total - left) % Job.SWING == 1) worker.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
                 return Job.Step.WORKING;
             }
             List<ItemStack> drops = Block.getDrops(state, level, pos, level.getBlockEntity(pos), worker, tool);
             if (!Storage.fits(worker.getInventory(), drops)) { left = 0; return Job.Step.FULL; }
             level.destroyBlockProgress(worker.getId(), pos, -1);
             level.destroyBlock(pos, false, worker);
+            worker.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
             PlacedLogs.forget(level, pos);
             Storage.add(worker.getInventory(), drops);
             log++;
@@ -105,6 +108,7 @@ final class WoodTask implements Job.Task {
             for (int i = 0; i < inventory.getContainerSize(); i++) if (inventory.getItem(i).is(sapling)) { slot = i; break; }
             if (slot < 0) return;
             level.setBlockAndUpdate(pos, state);
+            worker.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
             inventory.getItem(slot).shrink(1);
         }
     }

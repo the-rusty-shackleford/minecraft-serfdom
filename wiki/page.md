@@ -126,6 +126,12 @@ Seed comes from what the farmer carries, then from the farm's chests.
 
 - The worker takes its tool from the post's chests and wears it out as you would. When it
   breaks, it takes the next.
+- It **holds the tool in its hand**, arms out of the fold like an illager's, and swings it as it
+  works: an axe at the trunk, a hoe at each crop. Anything else a villager holds (bread, an
+  emerald) still sits on its folded arms.
+
+![Workers with a hoe, an axe, a sword, a pickaxe, an axe in iron armour and a shovel in a coat](img/tools-in-hand.webp)
+
 - It works at a player's speed with the same tool. A worker whose trade fits the job works
   **25% faster**: farmers at farming, the woodworker (or the fletcher) at woodcutting, butchers
   at cooking, and armorers, toolsmiths and weaponsmiths at the blacksmith's.
@@ -391,7 +397,8 @@ chest and its post's chests:
 - **Guns** reload from loose rounds only. Magazines stay in the chest.
 - **Fighting:** it attacks raiders it can see within 32 blocks, never chasing more than 48
   blocks from its post or bed. It **holds fire** while you, a villager, a golem, a guard or a
-  pet is in its line of fire.
+  pet is in its line of fire. While it fights, it draws a bow to its eye and holds a crossbow
+  or a gun to its shoulder.
 - **Out of ammo**, it draws its melee weapon; with nothing to fight with, it hides like any
   villager. Free villagers always hide.
 - **Afterwards** it puts every weapon and the leftover ammo back in the chest it came from.

@@ -65,6 +65,7 @@ public final class DefenceGameTests {
     @BeforeBatch(batch = "defence_zombie") public static void zombie(ServerLevel level) { Yard.hour(level, 18000); }
     @BeforeBatch(batch = "defence_freed") public static void freed(ServerLevel level) { day(level); }
     @BeforeBatch(batch = "defence_hid") public static void hid(ServerLevel level) { day(level); }
+    @BeforeBatch(batch = "defence_chained") public static void chained(ServerLevel level) { day(level); }
 
     /** The raids these tests started, so none outlives a failed test. */
     private static final java.util.Set<Raid> STARTED = java.util.concurrent.ConcurrentHashMap.newKeySet();
@@ -126,6 +127,9 @@ public final class DefenceGameTests {
         worker.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
         var raider = new AtomicReference<Raider>();
         var raid = new AtomicReference<Raid>();
+        // Fighting is the game's "aggressive", which every client sees (D-0011).
+        var aggressive = new boolean[]{false};
+        h.onEachTick(() -> aggressive[0] |= worker.isAggressive() && raider.get() != null && raider.get().isAlive());
         h.startSequence().thenIdle(SETTLE).thenExecute(() -> {
             raid.set(raid(h, owner, bed));
             raider.set(raider(h, raid.get(), EntityType.VINDICATOR, 22, 10, true));
@@ -141,8 +145,37 @@ public final class DefenceGameTests {
                 .thenWaitUntil(() -> h.assertTrue(Yard.count(h, chest, Items.IRON_SWORD) == 1, "the sword goes back"))
                 .thenExecute(() -> {
                     h.assertTrue(hand(worker).isEmpty() && !Defenders.arms(worker).carries(), "its hands empty: " + hand(worker));
+                    h.assertTrue(aggressive[0], "it was aggressive while it fought the raider");
+                    h.assertFalse(worker.isAggressive(), "and is not once the raid is over");
                     h.assertTrue(worker.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET), "the helmet stays on");
                     h.assertTrue(Yard.count(h, chest, Items.STONE_SWORD) == 1 && Yard.count(h, chest, Items.BREAD) == 8, "the rest untouched");
+                    end(raid.get());
+                }).thenSucceed();
+    }
+
+    /** A defender chained in the middle of a fight, its raider still standing (D-0011): it was aggressive
+     * while it fought, and is not the moment the chain stops its defence, with no tick of the defence's
+     * own between (the capture rebuilds its brain, which stops what runs), so no client draws a captive
+     * aiming for ever. */
+    @GameTest(template = "yard", timeoutTicks = 1200, batch = "defence_chained")
+    public void aDefenderChainedMidFightIsNoLongerAggressive(GameTestHelper h) {
+        Yard.floor(h);
+        var owner = Yard.player(h, 2, 2, "jailer");
+        var bed = Yard.bed(h, 8, 8);
+        Yard.chest(h, 10, 8, new ItemStack(Items.IRON_SWORD));
+        var worker = Yard.worker(h, 12, 12, VillagerProfession.FARMER, owner, bed, null);
+        var raider = new AtomicReference<Raider>();
+        var raid = new AtomicReference<Raid>();
+        h.startSequence().thenIdle(SETTLE).thenExecute(() -> {
+            raid.set(raid(h, owner, bed));
+            raider.set(raider(h, raid.get(), EntityType.VINDICATOR, 22, 10, true));
+            raider.get().setInvulnerable(true);
+        }).thenWaitUntil(() -> h.assertTrue(worker.isAggressive(), "fighting the raider, it is aggressive"))
+                .thenExecute(() -> {
+                    h.assertTrue(raider.get().isAlive() && defending(worker), "mid-fight, the raider standing");
+                    com.chunkworks.serfdom.Workers.capture(h.getLevel(), worker, owner, new ItemStack(Serfdom.CHAIN_LEAD.get()));
+                    h.assertTrue(Workers.cuffed(worker) && !defending(worker), "chained, it stops defending");
+                    h.assertFalse(worker.isAggressive(), "and is no longer aggressive");
                     end(raid.get());
                 }).thenSucceed();
     }

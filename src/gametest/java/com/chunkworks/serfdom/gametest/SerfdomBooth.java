@@ -59,7 +59,10 @@ import org.slf4j.LoggerFactory;
  * favourite's hop, a purchase from a farmer, the ledger's "not interested"; and (D-0007) a raid on the
  * base: a defender armed at its chest, a swordsman's blow, an arrow in flight, a gunner's hit, and a
  * chest with its bow put back; and (D-0008) a farm of nine posts: a bare patch before it is sown,
- * five farmers each in a plot of its own, the post's screen counting the farm, and the patch sown.
+ * five farmers each in a plot of its own, the post's screen counting the farm, and the patch sown;
+ * and (D-0011) arms out of the fold gripping tools and weapons: a row of tools from the front, close,
+ * from the side and from behind, beside a farmer's bread on folded arms; a captive with its hoe, a
+ * bow, a crossbow and a gun aimed; the captive's manacled wrists; a blow mid-swing; a walk. `-PboothScene=arms` runs it alone.
  * Every step also checks in code what it can. This fixture never ships. */
 @EventBusSubscriber(modid = "serfdom_gametest", value = Dist.CLIENT)
 public final class SerfdomBooth {
@@ -105,6 +108,13 @@ public final class SerfdomBooth {
     /** The farm scene's steps, each started when the one before is done: how long five farmers take
      * to fetch their hoes and spread out is theirs to say, not a fixed tick's. */
     private static int farmStep, farmStepAt;
+    // D-0011: arms out of the fold.
+    private static BlockPos armsLot;
+    private static boolean armsOnly;
+    private static int armsStep, armsStepAt, swinger, armsWalker;
+    /** The tools row, left to right as the camera sees it, and the farmer with bread (folded arms). */
+    private static final int[] TOOLS = new int[6], RANGED = new int[3];
+    private static int bread, cuffedHoe;
 
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         if (!Boolean.getBoolean("serfdom.booth")) return;
@@ -117,6 +127,11 @@ public final class SerfdomBooth {
             if (tick == 30 && "farm".equals(System.getProperty("serfdom.booth.scene"))) {
                 keep = mc.player.blockPosition().offset(-48, 0, 0);
                 tick = 4139;
+            }
+            // `-PboothScene=arms`: past every other scene's ticks and checks.
+            if (tick == 30 && "arms".equals(System.getProperty("serfdom.booth.scene"))) {
+                armsOnly = true;
+                tick = 8000;
             }
             switch (++tick) {
                 case 20 -> server(mc, p -> {
@@ -1008,7 +1023,8 @@ public final class SerfdomBooth {
                     if (tick > 1595 && tick < 2300) market(mc);
                     if (tick > 2410 && tick < 3200) bazaar(mc);
                     if (tick > 3270 && tick < 3900) defence(mc);
-                    if (tick > 4160) farm(mc);
+                    if (armsOnly || farmStep > 5) arms(mc);
+                    else if (tick > 4160) farm(mc);
                     if (tick > 905 && tick < 950) server(mc, p -> {
                         var v = p.serverLevel().getEntity(walker);
                         if (v != null) v.setPos(v.getX() + 0.12, v.getY(), v.getZ());
@@ -1223,7 +1239,7 @@ public final class SerfdomBooth {
                 mc.execute(() -> mc.options.hideGui = true);
             }); next(); }
             case 4 -> { if (tick < farmStepAt + 10) return; sown(mc); if (sownShot) next(); }
-            case 5 -> { if (tick < farmStepAt + 20) return; LOG.info("serfdom booth: COMPLETE"); mc.stop(); next(); }
+            case 5 -> { if (tick < farmStepAt + 20) return; next(); }
             default -> {}
         }
     }
@@ -1264,6 +1280,139 @@ public final class SerfdomBooth {
         sownShot = true;
     }
 
+    /** effects: the arms scene's next step (D-0011); the booth is complete after it. */
+    private static void arms(Minecraft mc) {
+        switch (armsStep) {
+            // The camera goes first, so the lot's chunks are loaded and ticking when its villagers come.
+            case 0 -> { server(mc, p -> {
+                armsLot = (post != null ? post : p.blockPosition()).offset(0, 0, -96);
+                p.setGameMode(GameType.SPECTATOR);
+                p.teleportTo(p.serverLevel(), armsLot.getX() - 0.25, armsLot.getY() - 0.2, armsLot.getZ() - 1.5, 0F, 2F);
+            }); armsNext(); }
+            case 1 -> { if (tick < armsStepAt + 20) return; server(mc, SerfdomBooth::armsLot); armsNext(); }
+            case 2 -> {
+                if (tick < armsStepAt + 40) return;
+                var tools = villagers(mc, TOOLS);
+                check(tools.size() == TOOLS.length && tools.stream().allMatch(com.chunkworks.serfdom.client.Grips::out),
+                        "the client sees the tools row gripping: " + tools.stream().map(v -> v.getMainHandItem().getItem().toString()).toList());
+                var loaf = (Villager) mc.level.getEntity(bread);
+                check(loaf != null && loaf.getMainHandItem().is(Items.BREAD) && !com.chunkworks.serfdom.client.Grips.out(loaf), "the farmer's bread stays on folded arms");
+                photo(mc, "60-arms-front");
+                server(mc, p -> p.teleportTo(p.serverLevel(), armsLot.getX() + 0.75, armsLot.getY() - 0.3, armsLot.getZ() + 3.6, 0F, 2F));
+                armsNext();
+            }
+            case 3 -> { if (tick < armsStepAt + 10) return; photo(mc, "61-arms-close");
+                server(mc, p -> p.teleportTo(p.serverLevel(), armsLot.getX() + 7.5, armsLot.getY() - 0.2, armsLot.getZ() + 6.5, 90F, 2F)); armsNext(); }
+            case 4 -> { if (tick < armsStepAt + 10) return; photo(mc, "62-arms-side");
+                server(mc, p -> p.teleportTo(p.serverLevel(), armsLot.getX() + 0.5, armsLot.getY() - 0.2, armsLot.getZ() + 10.5, 180F, 2F)); armsNext(); }
+            case 5 -> { if (tick < armsStepAt + 10) return; photo(mc, "63-arms-back");
+                server(mc, p -> p.teleportTo(p.serverLevel(), armsLot.getX() + 0.5, armsLot.getY() - 0.2, armsLot.getZ() + 9.0, 0F, 2F)); armsNext(); }
+            case 6 -> {
+                if (tick < armsStepAt + 10) return;
+                var ranged = villagers(mc, RANGED);
+                check(ranged.size() == RANGED.length && ranged.stream().allMatch(v -> v.isAggressive() && com.chunkworks.serfdom.client.Grips.out(v)),
+                        "the client sees the bow, the crossbow and the gun aimed");
+                var cuffed = mc.level.getEntity(cuffedHoe);
+                check(cuffed instanceof Villager v && Workers.cuffed(v) && com.chunkworks.serfdom.client.Grips.out(v), "the client sees the captive cuffed, gripping its hoe");
+                photo(mc, "64-arms-captive-and-ranged");
+                server(mc, p -> p.teleportTo(p.serverLevel(), armsLot.getX() + 3.0, armsLot.getY() - 0.6, armsLot.getZ() + 10.9, 0F, 8F));
+                armsNext();
+            }
+            case 7 -> { if (tick < armsStepAt + 10) return; photo(mc, "65-arms-cuffs");
+                server(mc, p -> p.teleportTo(p.serverLevel(), armsLot.getX() + 9.0, armsLot.getY() - 0.2, armsLot.getZ() + 15.0, 0F, 2F)); armsNext(); }
+            case 8 -> {
+                if (tick % 8 == 0) server(mc, p -> {
+                    if (p.serverLevel().getEntity(swinger) instanceof Villager v) v.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+                });
+                if (tick < armsStepAt + 20) return;
+                var v = (Villager) mc.level.getEntity(swinger);
+                float blow = v.getAttackAnim(0F);
+                if (blow < 0.25F || blow > 0.6F) return;
+                check(blow > 0, "the client plays the villager's swing: " + blow);
+                photo(mc, "66-arms-swing");
+                server(mc, p -> p.teleportTo(p.serverLevel(), armsLot.getX() + 14.5, armsLot.getY() - 0.2, armsLot.getZ() + 15.5, 0F, 2F));
+                armsNext();
+            }
+            case 9 -> {
+                server(mc, p -> {
+                    var w = p.serverLevel().getEntity(armsWalker);
+                    if (w != null) w.setPos(w.getX() + 0.1, w.getY(), w.getZ());
+                });
+                if (tick < armsStepAt + 25) return;
+                photo(mc, "67-arms-walking");
+                armsNext();
+            }
+            case 10 -> { if (tick < armsStepAt + 10) return; LOG.info("serfdom booth: COMPLETE"); mc.stop(); armsNext(); }
+            default -> {}
+        }
+    }
+
+    private static void armsNext() { armsStep++; armsStepAt = tick; }
+
+    private static List<Villager> villagers(Minecraft mc, int[] ids) {
+        var out = new ArrayList<Villager>();
+        for (int id : ids) if (mc.level.getEntity(id) instanceof Villager v) out.add(v);
+        return out;
+    }
+
+    /** effects: the arms scene's ground and its villagers, standing still, and the camera before the
+     * tools row. */
+    private static void armsLot(ServerPlayer p) {
+        var l = p.serverLevel();
+        for (int x = -10; x <= 22; x++) for (int z = -4; z <= 22; z++) {
+            l.setBlockAndUpdate(armsLot.offset(x, -1, z), Blocks.GRASS_BLOCK.defaultBlockState());
+            for (int y = 0; y < 5; y++) l.setBlockAndUpdate(armsLot.offset(x, y, z), Blocks.AIR.defaultBlockState());
+        }
+        var at = net.minecraft.world.phys.Vec3.atBottomCenterOf(armsLot);
+        VillagerProfession[] trades = {VillagerProfession.FARMER, VillagerProfession.FLETCHER, VillagerProfession.WEAPONSMITH, VillagerProfession.TOOLSMITH,
+                VillagerProfession.ARMORER, VillagerProfession.NONE};
+        ItemStack[] tools = {new ItemStack(Items.IRON_HOE), new ItemStack(Items.IRON_AXE), new ItemStack(Items.IRON_SWORD), new ItemStack(Items.IRON_PICKAXE),
+                new ItemStack(Items.IRON_AXE), new ItemStack(Items.IRON_SHOVEL)};
+        // Left to right as the camera sees them: the camera looks south, so west of it is its right.
+        var row = new Villager[TOOLS.length];
+        for (int i = 0; i < TOOLS.length; i++) {
+            row[i] = stand(l, at.add(3.75 - 1.5 * i, 0, 6), 180F, trades[i]);
+            row[i].setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, tools[i]);
+            TOOLS[i] = row[i].getId();
+        }
+        row[4].setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
+        var dressed = row[5];
+        for (var path : new String[]{"snowy_coat", "snowy_pants"}) {
+            var stack = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("luckyswardrobe", path)));
+            check(!stack.isEmpty(), "Lucky's Wardrobe's " + path + " is registered");
+            dressed.setItemSlot(dressed.getEquipmentSlotForItem(stack), stack);
+        }
+        var loaf = stand(l, at.add(-5.25, 0, 6), 180F, VillagerProfession.FARMER);
+        loaf.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new ItemStack(Items.BREAD));
+        bread = loaf.getId();
+        // Behind them, facing the same way: a captive with its hoe, and three weapons aimed past the camera.
+        var chained = stand(l, at.add(3, 0, 13), 180F, VillagerProfession.MASON);
+        Workers.capture(l, chained, p, new ItemStack(Serfdom.CHAIN_LEAD.get()));
+        chained.dropLeash(true, false);
+        chained.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_HOE));
+        cuffedHoe = chained.getId();
+        ItemStack[] weapons = {new ItemStack(Items.BOW), new ItemStack(Items.CROSSBOW),
+                new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("rangedweaponsmod:pistol")))};
+        for (int i = 0; i < RANGED.length; i++) {
+            check(!weapons[i].isEmpty(), "weapon " + i + " is registered");
+            var v = stand(l, at.add(1 - 2 * i, 0, 13), 160F, VillagerProfession.FLETCHER);
+            v.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, weapons[i]);
+            v.setXRot(-8F);
+            v.setAggressive(true);
+            RANGED[i] = v.getId();
+        }
+        // Off to the east: one swinging an axe, one walking with it, side on.
+        var swing = stand(l, at.add(9, 0, 19), 180F, VillagerProfession.FLETCHER);
+        swing.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_AXE));
+        swinger = swing.getId();
+        var walk = stand(l, at.add(12, 0, 19.5), -90F, VillagerProfession.FARMER);
+        walk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_HOE));
+        armsWalker = walk.getId();
+        mc().execute(() -> mc().options.hideGui = true);
+    }
+
+    private static Minecraft mc() { return Minecraft.getInstance(); }
+
     /** effects: clicks the screen's button labelled {@code label}. */
     private static void click(Screen screen, String label) {
         var button = screen.children().stream().filter(c -> c instanceof Button b && b.getMessage().getString().equals(label)).map(c -> (Button) c).findFirst()
@@ -1281,6 +1430,12 @@ public final class SerfdomBooth {
     }
     private static void photo(Minecraft mc, String name) {
         mc.getToasts().clear();
+        // Where the camera stood and looked, on both sides, so a photograph of the wrong thing can be told
+        // from one taken at the wrong moment.
+        var c = mc.getCameraEntity();
+        if (c != null) LOG.info("serfdom booth: camera for {}: {} at {}, yaw {}, pitch {}, {}", name, c == mc.player ? "the player" : c,
+                c.position(), c.getYRot(), c.getXRot(), mc.gameMode == null ? "?" : mc.gameMode.getPlayerMode());
+        server(mc, p -> LOG.info("serfdom booth: server player for {}: at {}, yaw {}, pitch {}", name, p.position(), p.getYRot(), p.getXRot()));
         Screenshot.grab(mc.gameDirectory, "serfdom-" + name + ".png", mc.getMainRenderTarget(), m -> LOG.info("serfdom booth: {}", m.getString()));
     }
     private static void check(boolean ok, String message) { if (!ok) throw new IllegalStateException(message); LOG.info("serfdom booth: PASS {}", message); }
