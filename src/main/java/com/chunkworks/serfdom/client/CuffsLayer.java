@@ -3,27 +3,30 @@ package com.chunkworks.serfdom.client;
 
 import com.chunkworks.serfdom.Workers;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.VillagerModel;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.core.Direction;
+import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.ChainBlock;
 
-/** The cuffs (D-0003): a villager in chains wears a short length of vanilla's chain across the front
- * of its crossed forearms, so anyone can see it is cuffed whether or not someone holds the chain.
- * The chain block's own model and texture, laid on its side; no art of ours. With its arms out of the
- * fold, gripping a tool (D-0011), each wrist wears a manacle instead: a band of the anvil's dark iron,
- * a little wider than the sleeve, where the sleeve meets the hand (a chain that small reads as a
- * line). */
+/** The cuffs (D-0003): a villager in chains wears a short length of chain across the front of its
+ * crossed forearms, so anyone can see it is cuffed whether or not someone holds the chain. Vanilla's
+ * chain model, laid on its side as the chain block's blockstate lays it, with a texture of ours in
+ * an iron ingot's greys ({@code models/block/cuff_chain.json}; D-0011). With its arms out of the
+ * fold, gripping a tool (D-0011), each wrist wears a manacle instead: a band in an iron ingot's
+ * greys, a little wider than the sleeve, where the sleeve meets the hand (a chain that small reads as
+ * a line). */
 public final class CuffsLayer extends RenderLayer<Villager, VillagerModel<Villager>> {
     public static final net.minecraft.client.model.geom.ModelLayerLocation MANACLES =
             new net.minecraft.client.model.geom.ModelLayerLocation(com.chunkworks.serfdom.Serfdom.id("manacles"), "main");
-    private static final net.minecraft.resources.ResourceLocation IRON = net.minecraft.resources.ResourceLocation.withDefaultNamespace("textures/block/anvil.png");
+    private static final net.minecraft.resources.ResourceLocation IRON = com.chunkworks.serfdom.Serfdom.id("textures/entity/manacles.png");
+    /** The chain across folded forearms, loaded by {@link ClientSetup} beside the game's models. */
+    public static final ModelResourceLocation CHAIN = ModelResourceLocation.standalone(com.chunkworks.serfdom.Serfdom.id("block/cuff_chain"));
     private final net.minecraft.client.model.geom.ModelPart manacles, right, left;
     /** The chain's length across the forearms, as a share of a block: eight of the model's pixels. */
     private static final float SCALE = 0.5F;
@@ -39,7 +42,7 @@ public final class CuffsLayer extends RenderLayer<Villager, VillagerModel<Villag
 
     /** effects: a band round each wrist of a villager's arms out of the fold ({@link ArmsLayer}'s arms,
      * which pivot at the shoulders): 4.8 by 1.6 by 4.8 over the arm's 4 by 4, across the sleeve's end.
-     * The texture is the anvil's 16 by 16 laid over 32 by 32 of the band's faces. */
+     * The texture is ours, 32 by 32 to match ({@code manacles} in {@code devtools/art/art.py}). */
     public static net.minecraft.client.model.geom.builders.LayerDefinition create() {
         var mesh = new net.minecraft.client.model.geom.builders.MeshDefinition();
         var root = mesh.getRoot();
@@ -67,9 +70,15 @@ public final class CuffsLayer extends RenderLayer<Villager, VillagerModel<Villag
         getParentModel().root().getChild("arms").translateAndRotate(pose);
         pose.translate(0.0F, Y / 16.0F, Z / 16.0F);
         pose.scale(SCALE, SCALE, SCALE);
+        // Along x, as the blockstate turns the chain for axis=x (x 90, y 90: BlockModelRotation's
+        // rotateYXZ(-y, -x, 0)), about the block's middle.
+        pose.mulPose(Axis.YP.rotationDegrees(-90.0F));
+        pose.mulPose(Axis.XP.rotationDegrees(-90.0F));
         pose.translate(-0.5F, -0.5F, -0.5F);
-        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(Blocks.CHAIN.defaultBlockState().setValue(ChainBlock.AXIS, Direction.Axis.X),
-                pose, buffers, light, OverlayTexture.NO_OVERLAY);
+        var mc = Minecraft.getInstance();
+        mc.getBlockRenderer().getModelRenderer().renderModel(pose.last(), buffers.getBuffer(Sheets.cutoutBlockSheet()), null,
+                mc.getModelManager().getModel(CHAIN), 1.0F, 1.0F, 1.0F, light, OverlayTexture.NO_OVERLAY,
+                net.neoforged.neoforge.client.model.data.ModelData.EMPTY, null);
         pose.popPose();
     }
 }

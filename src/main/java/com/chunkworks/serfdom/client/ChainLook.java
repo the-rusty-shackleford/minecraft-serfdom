@@ -2,11 +2,11 @@
 package com.chunkworks.serfdom.client;
 
 /** The chain lead's colours. Vanilla shades alternate leash segments by 0.7 and 1.0 of a brown
- * whose red is 0.5; the chain keeps the alternation, as dark and light iron links. Render thread
- * only. */
+ * whose red is 0.5; the chain keeps the alternation, as links in an iron ingot's two face greys
+ * (#a8a8a8 and #d8d8d8). Render thread only. */
 public final class ChainLook {
-    private static final float[] DARK = {0.30F, 0.31F, 0.34F};
-    private static final float[] LIGHT = {0.66F, 0.68F, 0.72F};
+    private static final float[] DARK = {0.659F, 0.659F, 0.659F};
+    private static final float[] LIGHT = {0.847F, 0.847F, 0.847F};
     private static boolean drawing;
     private ChainLook() {}
 

@@ -737,8 +737,11 @@ The market's data (D-0006):
   - Vanilla advances a swing only for monsters and players; `VillagerMixin` advances a villager's
     every tick, so every `swing` in the code plays. Woodcutting swings every `Job.SWING` ticks of a
     chop and as a log falls or a sapling goes in; farming at each harvest and each sowing.
-  - In chains with its arms out, a band of the anvil's dark iron goes round each wrist
-    (`CuffsLayer`).
+  - In chains with its arms out, a band in an iron ingot's greys goes round each wrist
+    (`CuffsLayer`, texture from `devtools/art/art.py`). The chain lead's links, in the hand and
+    strung to the villager (`ChainLook`), are the ingot's greys too, and so is the chain across a
+    captive's folded arms: vanilla's chain model with a texture of ours
+    (`models/block/cuff_chain.json`, loaded beside the game's models).
 
 Village Deed, Farmer's Delight, Ranged Weapons Mod, Thief, Village Law 1.1+ and Vanilla Wheels
 1.11+ are optional: without them there are no bought villages (and no stalls barred from one); no tomatoes, rice, pot, stove or

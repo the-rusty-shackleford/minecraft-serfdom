@@ -1,8 +1,9 @@
 # Serfdom
 
 **0.9.3 (a villager grips its tool, arms out of the fold, D-0011): built and gated on 2026-10-06 (329
-JUnit, 120 GameTests, booth 135 checks with 67 photos, 5 of 5 mutations; jar sha1 `f086a349`). Not
-released; Rusty holds the release until his batch is done.** Rusty: "they look weird holding tools,
+JUnit, 120 GameTests, booth 135 checks with 67 photos, 5 of 5 mutations), then the manacles, the chain
+lead and the chain on folded arms put in an iron ingot's greys on Rusty's word and gated again (jar sha1
+`92ca8cfd`). Not released; Rusty holds the release until his batch is done.** Rusty: "they look weird holding tools,
 as if they're holding the sprite and not the tool itself" (vanilla draws a villager's item as a
 dropped one on the folded arms); of two options he picked B, the arms out as an illager's. Found on
 the way: vanilla never plays a villager's swing (only monsters' and players'), so every swing Serfdom

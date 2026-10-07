@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Rusty Shackleford and nfx. SPDX-License-Identifier: AGPL-3.0-or-later
 """Serfdom's pixel art, drawn by hand in code: the Work Post's wood and board, the chain lead,
-the sheet of need icons, and the For Sale block's counter, cloth and sign (D-0006). Run from the repo root:
+the manacles and the chain across folded arms, the sheet of need icons, and the For Sale block's counter, cloth and sign (D-0006). Run from the repo root:
 
     uv run --no-project --with pillow python devtools/art/art.py
 
@@ -17,6 +17,9 @@ TEX = ROOT / "src/main/resources/assets/serfdom/textures"
 OAK = ["#4b3720", "#5e4527", "#73552f", "#8a6a3c", "#a07d48", "#b69257"]
 # Iron, dark to light.
 IRON = ["#2b2c30", "#46484e", "#6b6e75", "#9a9da4", "#c4c7cc", "#e6e8ea"]
+# An iron ingot's greys, dark to light: the chain lead and the manacles are the ingot's colour
+# (Rusty, 2026-10-06: the anvil's iron was "way too dark").
+INGOT = ["#353535", "#5e5e5e", "#727272", "#a8a8a8", "#d8d8d8", "#ffffff"]
 INK = "#2a211b"
 CREAM = "#efe4c4"
 # Emerald greens, dark to light, for the For Sale block's painted gem.
@@ -98,24 +101,61 @@ def board():
 
 
 def chain_lead():
-    """A loop of iron links with a hand loop, the lead's shape in iron: links alternate light and
-    dark so the chain reads at a glance."""
+    """A loop of iron links with a hand loop, the lead's shape in an iron ingot's greys: links
+    alternate light and dark so the chain reads at a glance."""
     img = canvas()
     # The links run along a loop: a list of link centres, each drawn as a 2x2 ring.
     path = [(3, 12), (4, 10), (5, 8), (6, 6), (8, 5), (10, 4), (12, 4), (13, 6), (12, 8), (10, 9), (8, 10), (7, 12), (6, 14)]
     for i, (cx, cy) in enumerate(path):
         light = i % 2 == 0
-        edge, body = (IRON[1], IRON[4]) if light else (IRON[0], IRON[2])
+        edge, body = (INGOT[2], INGOT[4]) if light else (INGOT[1], INGOT[3])
         for dx in (0, 1):
             for dy in (0, 1):
                 put(img, cx + dx, cy + dy, body)
         put(img, cx - 1, cy, edge); put(img, cx + 2, cy + 1, edge)
         put(img, cx, cy - 1, edge); put(img, cx + 1, cy + 2, edge)
         if light:
-            put(img, cx, cy, IRON[5])
+            put(img, cx, cy, INGOT[5])
     # The hand loop: a leather-brown ring at the end.
     for x, y in ((1, 13), (2, 14), (1, 14), (2, 12), (3, 15), (1, 15)):
         put(img, x, y, OAK[1])
+    return img
+
+
+def manacles():
+    """The manacles' band (D-0011), laid over CuffsLayer's 32 by 32 as a box 4.8 by 1.6 by 4.8: its top
+    and bottom faces (rows 0 to 4) the ingot's light grey, each side (rows 4.8 to 6.4) a white edge
+    above the grey and the ingot's darker grey at its foot, as an ingot's own faces are shaded."""
+    img = canvas(32, 32)
+    for x in range(20):
+        for y in range(4):
+            put(img, x, y, INGOT[4])
+        put(img, x, 4, INGOT[5])
+        put(img, x, 5, INGOT[4])
+        put(img, x, 6, INGOT[3])
+    return img
+
+
+def cuff_chain():
+    """The chain across a captive's folded forearms, in an iron ingot's greys (D-0011): the texture for
+    `models/block/cuff_chain.json`, which takes vanilla's chain model whole and draws its two crossed
+    planes from the strips at columns 0 to 2 and 3 to 5. Each strip is a column of three-wide links
+    seen face on, the one strip's links between the other's, so the chain alternates as it turns."""
+    img = canvas()
+
+    def ring(x0, rows):
+        top, bottom = rows[0], rows[-1]
+        for x in range(x0, x0 + 3):
+            put(img, x, top % 16, INGOT[4])
+            put(img, x, bottom % 16, INGOT[2])
+        put(img, x0 + 1, top % 16, INGOT[5])
+        for y in rows[1:-1]:
+            put(img, x0, y % 16, INGOT[3]); put(img, x0 + 2, y % 16, INGOT[3])
+
+    for first, last in ((1, 3), (6, 9), (12, 14)):
+        ring(0, list(range(first, last + 1)))
+    for first, last in ((3, 6), (9, 12), (14, 17)):
+        ring(3, list(range(first, last + 1)))
     return img
 
 
@@ -321,10 +361,13 @@ def main():
     (TEX / "block").mkdir(parents=True, exist_ok=True)
     (TEX / "item").mkdir(parents=True, exist_ok=True)
     (TEX / "gui").mkdir(parents=True, exist_ok=True)
+    (TEX / "entity").mkdir(parents=True, exist_ok=True)
     post_wood().save(TEX / "block/work_post.png")
     post_top().save(TEX / "block/work_post_top.png")
     board().save(TEX / "block/work_post_board.png")
     chain_lead().save(TEX / "item/chain_lead.png")
+    manacles().save(TEX / "entity/manacles.png")
+    cuff_chain().save(TEX / "block/cuff_chain.png")
     needs().save(TEX / "gui/needs.png")
     counter_planks().save(TEX / "block/for_sale_side.png")
     counter_front().save(TEX / "block/for_sale_front.png")

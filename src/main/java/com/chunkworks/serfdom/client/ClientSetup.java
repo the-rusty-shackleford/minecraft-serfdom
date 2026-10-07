@@ -42,6 +42,9 @@ public final class ClientSetup {
     @SubscribeEvent public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(Serfdom.FOR_SALE_ENTITY.get(), ForSaleRenderer::new);
     }
+    @SubscribeEvent public static void models(net.neoforged.neoforge.client.event.ModelEvent.RegisterAdditional event) {
+        event.register(CuffsLayer.CHAIN);
+    }
     @SubscribeEvent public static void layerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(ArmsLayer.LAYER, ArmsLayer::create);
         event.registerLayerDefinition(CuffsLayer.MANACLES, CuffsLayer::create);

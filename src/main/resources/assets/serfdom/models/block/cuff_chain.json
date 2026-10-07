@@ -1,0 +1,7 @@
+{
+    "parent": "minecraft:block/chain",
+    "textures": {
+        "particle": "serfdom:block/cuff_chain",
+        "all": "serfdom:block/cuff_chain"
+    }
+}

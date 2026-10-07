@@ -7,12 +7,16 @@ does. It replaces 0.9.2, which was never released, and ships in its place.
 
 `./gradlew clean build` with the booth on Xephyr `:7` (the recipe's environment on the command line;
 the Gradle daemon was not stopped first, since another session was building beside it): `BUILD
-SUCCESSFUL` in 5 m 45 s. The jar `serfdom-0.9.3.jar` has sha1
+SUCCESSFUL` in 5 m 45 s. The jar `serfdom-0.9.3.jar` had sha1
 `f086a349abe7ff5a2eb90b5648cb70234be9cd82`, with Carried 1.0.0 nested. No payload changed: the network
 version stays "7".
 
 After the gate, `build.gradle` (a GameTest dependency) and the booth (a log line) changed, below; the jar
-rebuilt from the committed tree has the same sha1.
+rebuilt from that tree had the same sha1. That was commit e79ee35.
+
+**Then Rusty's colours** (below, "After the photographs"): the gate again, `BUILD SUCCESSFUL` in 5 m
+36 s, JUnit run (329, 0 failures), 120 GameTests, booth 135 checks with 67 photographs. **The jar
+`serfdom-0.9.3.jar` now has sha1 `92ca8cfdc40586ec7bb258c072b70b1fff589a2c`.**
 
 ## JUnit: 329 tests, 0 failures
 
@@ -92,6 +96,32 @@ registered"), which M5 does not touch: see the Backpacks+ jar below.
 - **The wiki's ledger image cut its last line:** the stall now lists four visits, and the crop stopped at
   three. It is the whole panel now.
 
+## After the photographs: an iron ingot's greys
+
+Rusty, on photo 65: the manacles' thickness is fine, the colour "way too dark, it should be the same
+color as an iron ingot. Same with the chain lead"; and, asked, the chain across folded arms too ("all
+ingot grey"). D-0011 has it. Changed, all client art:
+
+- **The manacles:** a texture of ours (`manacles` in `devtools/art/art.py`), the ingot's #d8d8d8 with a
+  white edge and a #a8a8a8 foot, in place of the anvil's (its greys average less than half the ingot's).
+- **The chain lead:** its item drawn in the ingot's greys; the links strung to the villager
+  (`ChainLook`) #d8d8d8 and #a8a8a8, where they were #a8adb8 and #4d4f57.
+- **The chain across folded arms:** vanilla's chain model whole (`models/block/cuff_chain.json` takes
+  `minecraft:block/chain` as its parent), with a texture of ours (`cuff_chain`): three-wide links in the
+  two strips the model draws, on the rhythm vanilla's links keep so the planes alternate. `CuffsLayer`
+  turns it as the chain block's blockstate does for axis x (BlockModelRotation's
+  `rotateYXZ(-90°, -90°, 0)`).
+
+Judged in the gate's photographs against the run before, at three times: photo 05 (the lead strung to
+a captive, light grey, its links still alternating close up), 13 (the lead in hand), 14 (the chain on
+folded arms, in the place and turn vanilla's had), 64 and 65 (the manacles, light bands at both
+wrists), and 65 again under Fresh Animations (`-PboothLook=fresh -PboothScene=arms`, 10 checks; the set
+in `run/booth/screenshots-fresh/` is retaken). Every photograph of the gate framed as the run before
+(no turned camera). The mutation pass was not rerun: nothing it mutates changed.
+
+At a distance the lead's two greys read as one light line more than as links; the darker link could
+go to the ingot's shadow grey (#727272) if the chain should show more.
+
 ## Not seen
 
-Rusty has not seen photos 60 to 67, in either look.
+Rusty has not seen photos 60 to 67, in either look, nor the greys in play.
