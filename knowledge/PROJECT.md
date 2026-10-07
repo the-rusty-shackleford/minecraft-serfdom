@@ -3,7 +3,10 @@
 **0.9.3 (a villager grips its tool, arms out of the fold, D-0011): built and gated on 2026-10-06 (329
 JUnit, 120 GameTests, booth 135 checks with 67 photos, 5 of 5 mutations), then the manacles, the chain
 lead and the chain on folded arms put in an iron ingot's greys on Rusty's word and gated again (jar sha1
-`92ca8cfd`). Not released; Rusty holds the release until his batch is done.** Rusty: "they look weird holding tools,
+`92ca8cfd`). Released on 2026-10-07 (UTC) as pack 1.74.0 with Backpacks+ 0.7.1, on Rusty's "Proceed
+homie everything looks great"; the server repo's `knowledge/releases/pack-1.74.0.md` is the record. On
+the box's first start the base values took 62 ms (2543 at 0.8.0's), 42 map searches refused, and no
+new map was saved.** Rusty: "they look weird holding tools,
 as if they're holding the sprite and not the tool itself" (vanilla draws a villager's item as a
 dropped one on the folded arms); of two options he picked B, the arms out as an illager's. Found on
 the way: vanilla never plays a villager's swing (only monsters' and players'), so every swing Serfdom
@@ -464,20 +467,13 @@ Each phase is previewed to Rusty before it is built.
 
 ## Next
 
-- **Rusty vets photos 60 to 67** in both looks (`run/booth/screenshots/` and
-  `run/booth/screenshots-fresh/`): the grip, the aim, the swing. The manacles and chains in an iron
-  ingot's grey he passed ("looks good", photos 05, 13, 14 and 65).
-- **The release, on Rusty's go** (D-0008 to D-0011): tag the version that carries them,
-  attach `build/wiki.zip` (the page has Shared farms and Sowing, photos `farm`, `farm-post`,
-  `sowing-before`, `sowing-after`), replace 0.8.0 in the pack. Judge the wiki page locally first
-  (`snap.py`). Rusty vets photos 56 to 59.
+- Rusty vets photos 56 to 59 (shared farms and sowing). He passed 60 to 67 in both looks ("everything
+  looks great", 2026-10-06).
 - Unasked, for Rusty if he wants them: woodcutting posts linked into a shared forest (the same rule
   would serve); a farmer with no seed buying some at a stall (today it shows the empty crate).
-- **The startup stall: fixed in 0.9.1** (D-0009). After the release, the box's first start should log
-  `... map searches refused), worked out in` a few hundred ms, and no new `map_*.dat` (the last id is 234).
-- Watch the box's log for Serfdom in live play: no hire, capture, market day or raid has run there.
-- Rusty vets 0.8.0's photos 51 to 55 (and says whether a weapon across folded arms will do), 0.7.0's
-  47 to 50 and 0.6.0's 37 to 46.
+- Watch the box's log for Serfdom in live play: no hire, capture, market day, raid, shared farm or
+  sowing has run there.
+- Rusty vets 0.8.0's photos 51 to 55, 0.7.0's 47 to 50 and 0.6.0's 37 to 46.
 - RWM's magazines as protocol ammo stores, if Rusty wants defenders to use them: a change to RWM.
 - Rusty vets 0.5.0's photos 34 to 36 and the hungry icon in 01; 0.4.0's photos 18 to 33 (armour,
   clothes, the robe rule, the child, the trailer, the dressed Worker Screen); 0.3.0's photos 05 and 13 to 17 and the song (`run/work_song.wav`); and
