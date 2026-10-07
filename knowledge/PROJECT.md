@@ -465,7 +465,8 @@ Each phase is previewed to Rusty before it is built.
 ## Next
 
 - **Rusty vets photos 60 to 67** in both looks (`run/booth/screenshots/` and
-  `run/booth/screenshots-fresh/`): the grip, the aim, the swing, the manacles.
+  `run/booth/screenshots-fresh/`): the grip, the aim, the swing. The manacles and chains in an iron
+  ingot's grey he passed ("looks good", photos 05, 13, 14 and 65).
 - **The release, on Rusty's go** (D-0008 to D-0011): tag the version that carries them,
   attach `build/wiki.zip` (the page has Shared farms and Sowing, photos `farm`, `farm-post`,
   `sowing-before`, `sowing-after`), replace 0.8.0 in the pack. Judge the wiki page locally first

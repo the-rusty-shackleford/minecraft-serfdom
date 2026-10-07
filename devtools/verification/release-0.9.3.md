@@ -119,9 +119,10 @@ wrists), and 65 again under Fresh Animations (`-PboothLook=fresh -PboothScene=ar
 in `run/booth/screenshots-fresh/` is retaken). Every photograph of the gate framed as the run before
 (no turned camera). The mutation pass was not rerun: nothing it mutates changed.
 
-At a distance the lead's two greys read as one light line more than as links; the darker link could
-go to the ingot's shadow grey (#727272) if the chain should show more.
+At a distance the lead's two greys read as one light line more than as links; put to Rusty with the
+ingot's shadow grey (#727272) offered for the darker link, he passed the photographs as they are
+("looks good").
 
 ## Not seen
 
-Rusty has not seen photos 60 to 67, in either look, nor the greys in play.
+Nobody has seen the greys in play.
