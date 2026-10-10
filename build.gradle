@@ -7,7 +7,7 @@ group = 'com.chunkworks.serfdom'
 base { archivesName = 'serfdom' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 repositories {
-    mavenLocal { content { includeGroup 'com.chunkworks.carried'; includeGroup 'com.nfx.rangedweapons' } }
+    mavenLocal { content { includeGroup 'com.chunkworks.carried'; includeGroup 'com.nfx.rangedweapons'; includeGroup 'com.chunkworks.vanillawheels' } }
     mavenCentral()
     // Farmer's Delight is published on Modrinth's maven, not Central.
     maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
@@ -22,9 +22,10 @@ def thief = 'maven.modrinth:thief:Zhr0tVOO'
 // Village Law 1.1.0: a capture an officer saw is owed to the player's case (its api.Cases), and the
 // case's settlement frees it. Built in the sibling repo; optional at run time.
 def villageLaw = files('../minecraft-village-law/build/libs/villagelaw-1.1.0.jar')
-// Vanilla Wheels 1.11.0: captives ride in the trailer through its cargo rules (its D-0029). Built in
-// the sibling repo; optional at run time.
-def vanillaWheels = files('../minecraft-vanilla-wheels/build/libs/vanillawheels-1.11.0.jar')
+// Vanilla Wheels: captives ride in the trailer through its cargo rules (its D-0029, 1.11.0 on). From
+// mavenLocal (`./gradlew publishToMavenLocal` in its repo first), not its build folder, which a
+// `clean` there empties (1.11.0's jar was gone by 2026-10-10 and this build with it); optional at run time.
+def vanillaWheels = dependencies.create('com.chunkworks.vanillawheels:vanillawheels:1.14.0') { transitive = false }
 // Guard Villagers 2.4.11 (sha1 5168ed3f, the box's jar): its guards are Village Law's officers.
 def guardVillagers = 'maven.modrinth:guard-villagers:b8N5GP8u'
 // Lucky's Wardrobe 2.0.0 (sha1 a0a37d72, the box's jar): the pack's clothes, every one an armour item
@@ -168,7 +169,7 @@ dependencies {
     gametestRuntimeOnly vanillaWheels
     gametestCompileOnly guardVillagers
     gametestRuntimeOnly guardVillagers
-    gametestRuntimeOnly files('../minecraft-trailer/build/libs/trailer-2.4.0.jar')
+    gametestRuntimeOnly files('../minecraft-trailer/build/libs/trailer-2.5.0.jar')
     compileOnly farmersDelight
     gametestCompileOnly farmersDelight
     // The Ranged Weapons protocol 1.7: a worker fires any gun mod's guns through it in a raid (D-0007).
@@ -179,9 +180,9 @@ dependencies {
     gametestRuntimeOnly farmersDelight
     // Backpacks+ on the gametest server only, so a fee is proven paid out of a real bag; never bundled.
     gametestRuntimeOnly files('../minecraft-backpacks-plus/build/libs/backpacksplus-0.7.1.jar')
-    // Ranged Weapons Mod 2.12.0 and Metals and Materials 1.0.3 (its steel) on the gametest server
-    // only, so a blacksmith is proven to make a rifle at the weapons workbench (D-0002); never bundled.
-    gametestRuntimeOnly files('../minecraft-ranged-weapons-mod/build/libs/rangedweaponsmod-2.12.0.jar')
+    // Ranged Weapons Mod 2.13.0 (the box's) and Metals and Materials 1.0.3 (its steel) on the gametest
+    // server only, so a blacksmith is proven to make a rifle at the weapons workbench (D-0002); never bundled.
+    gametestRuntimeOnly files('../minecraft-ranged-weapons-mod/build/libs/rangedweaponsmod-2.13.0.jar')
     gametestRuntimeOnly files('../minecraft-metals-and-materials/build/libs/metalsandmaterials-1.0.3.jar')
     // Lucky's Wardrobe on the gametest server and in the booth only, so its clothes are proven to go
     // in a worker's slots, never wear, and fit as armour does (D-0004); never bundled.

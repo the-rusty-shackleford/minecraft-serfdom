@@ -12,6 +12,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.SoundType;
@@ -51,6 +52,7 @@ public final class Serfdom {
     private static final DeferredRegister<net.minecraft.sounds.SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, ID);
     private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, ID);
     private static final DeferredRegister<net.minecraft.world.entity.ai.village.poi.PoiType> POIS = DeferredRegister.create(Registries.POINT_OF_INTEREST_TYPE, ID);
+    private static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, ID);
 
     public static final DeferredBlock<WorkPostBlock> WORK_POST = BLOCKS.registerBlock("work_post", WorkPostBlock::new,
             BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0F).sound(SoundType.WOOD).ignitedByLava().noOcclusion());
@@ -138,6 +140,17 @@ public final class Serfdom {
     public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<com.chunkworks.serfdom.market.ForSaleMenu>> FOR_SALE_MENU = MENUS.register("for_sale",
             () -> new net.minecraft.world.inventory.MenuType<>(com.chunkworks.serfdom.market.ForSaleMenu::new, net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
 
+    /** Serfdom's own creative tab (Rusty, 2026-10-10: a pane for every mod with recipes): the Work Post, the For Sale block and the Chain Lead. */
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> CREATIVE_TAB = TABS.register("main", () -> CreativeModeTab.builder()
+            .title(net.minecraft.network.chat.Component.translatable("itemGroup.serfdom"))
+            .icon(() -> WORK_POST_ITEM.get().getDefaultInstance())
+            .displayItems((parameters, output) -> {
+                output.accept(WORK_POST_ITEM.get());
+                output.accept(FOR_SALE_ITEM.get());
+                output.accept(CHAIN_LEAD.get());
+            })
+            .build());
+
     public static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(ID, path); }
 
     /** requires: the mod bus and container; effects: registers content, config and listeners. */
@@ -150,6 +163,7 @@ public final class Serfdom {
         SOUNDS.register(bus);
         MENUS.register(bus);
         POIS.register(bus);
+        TABS.register(bus);
         container.registerConfig(ModConfig.Type.SERVER, SerfdomConfig.SPEC);
         bus.addListener((BuildCreativeModeTabContentsEvent e) -> {
             if (e.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) { e.accept(WORK_POST_ITEM); e.accept(FOR_SALE_ITEM); }
