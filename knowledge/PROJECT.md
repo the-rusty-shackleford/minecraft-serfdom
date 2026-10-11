@@ -1,11 +1,11 @@
 # Serfdom
 
-**0.10.0 (its own creative tab): built and gated on 2026-10-10, unreleased.** Rusty, 2026-10-10: a
+**0.10.0 (its own creative tab): released 2026-10-11 in pack 1.82.0.** Rusty, 2026-10-10: a
 pane for every mod with recipes. The Work Post, the For Sale block and the Chain Lead have a tab of
 their own, **Serfdom**, and stay in Functional Blocks and Tools (`PaneGameTests`). Found on the way: the
 build named Vanilla Wheels 1.11.0's and Ranged Weapons Mod 2.12.0's jars in their repos' build folders,
 both gone, so it no longer compiled; it takes Vanilla Wheels 1.14.0 from mavenLocal now, RWM 2.13.0
-(the box's) and Trailer 2.5.0. Gate: the release gate (2026-10-10, `clean build --no-build-cache`) green with 329 JUnit, 121 gametests and the booth's 135 checks.
+(the box's) and Trailer 2.5.0. Gate: the release gate (2026-10-10, `clean build --no-build-cache`) green with 329 JUnit, 121 gametests and the booth's 135 checks. Released on Rusty's go ("Release the 2026-10-10 batch and Survivalist Armor 0.2.0. This is my go."), tag `v0.10.0` at `965b35e`, the release gate (2026-10-11, `clean build --no-build-cache`) green again on that commit; sha1 `b3d95a21` on GitHub and on the server (the server repo's `knowledge/releases/pack-1.82.0.md`). Not yet seen in play on the box.
 
 **0.9.3 (a villager grips its tool, arms out of the fold, D-0011): built and gated on 2026-10-06 (329
 JUnit, 120 GameTests, booth 135 checks with 67 photos, 5 of 5 mutations), then the manacles, the chain
